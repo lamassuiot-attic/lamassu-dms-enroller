@@ -1,0 +1,46 @@
+package api
+
+import (
+	"context"
+	"enroller/pkg/ca/secrets"
+	"time"
+
+	"github.com/go-kit/kit/log"
+)
+
+type Middleware func(Service) Service
+
+func LoggingMiddleware(logger log.Logger) Middleware {
+	return func(next Service) Service {
+		return &loggingMiddleware{
+			next:   next,
+			logger: logger,
+		}
+	}
+}
+
+type loggingMiddleware struct {
+	next   Service
+	logger log.Logger
+}
+
+func (mw loggingMiddleware) GetCAs(ctx context.Context) (CAs secrets.CAs, err error) {
+	defer func(begin time.Time) {
+		mw.logger.Log("method", "GetCAs", "took", time.Since(begin), "err", err)
+	}(time.Now())
+	return mw.next.GetCAs(ctx)
+}
+
+func (mw loggingMiddleware) GetCAInfo(ctx context.Context, CA string) (CAInfo secrets.CAInfo, err error) {
+	defer func(begin time.Time) {
+		mw.logger.Log("method", "GetCAInfo", "took", time.Since(begin), "err", err)
+	}(time.Now())
+	return mw.next.GetCAInfo(ctx, CA)
+}
+
+func (mw loggingMiddleware) DeleteCA(ctx context.Context, CA string) (err error) {
+	defer func(begin time.Time) {
+		mw.logger.Log("method", "DeleteCA", "took", time.Since(begin), "err", err)
+	}(time.Now())
+	return mw.next.DeleteCA(ctx, CA)
+}

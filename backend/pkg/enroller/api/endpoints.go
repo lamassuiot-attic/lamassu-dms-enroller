@@ -2,7 +2,7 @@ package api
 
 import (
 	"context"
-	"enroller/pkg/enroller/crypto"
+	"enroller/pkg/enroller/models/csr"
 
 	"github.com/go-kit/kit/endpoint"
 )
@@ -64,8 +64,8 @@ func MakeGetPendingCSRFileEndpoint(s Service) endpoint.Endpoint {
 func MakePutChangeCSRStatusEndpoint(s Service) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
 		req := request.(putChangeCSRStatusRequest)
-		err = s.PutChangeCSRStatus(ctx, req.CSR, req.ID)
-		return putChangeCSRsResponse{Err: err}, nil
+		csr, err := s.PutChangeCSRStatus(ctx, req.CSR, req.ID)
+		return putChangeCSRsResponse{CSR: csr, Err: err}, nil
 	}
 }
 
@@ -99,8 +99,8 @@ type postCSRRequest struct {
 }
 
 type postCSRResponse struct {
-	CSR crypto.CSR `json:"csr,omitempty"`
-	Err error      `json:"err,omitempty"`
+	CSR csr.CSR `json:"csr,omitempty"`
+	Err error   `json:"err,omitempty"`
 }
 
 func (r postCSRResponse) error() error { return r.Err }
@@ -108,7 +108,7 @@ func (r postCSRResponse) error() error { return r.Err }
 type getPendingCSRsRequest struct{}
 
 type getPendingCSRsResponse struct {
-	CSRs crypto.CSRs `json:"CSRs,omitempty"`
+	CSRs csr.CSRs `json:"CSRs,omitempty"`
 }
 
 type getPendingCSRRequest struct {
@@ -116,8 +116,8 @@ type getPendingCSRRequest struct {
 }
 
 type getPendingCSRDBResponse struct {
-	CSR crypto.CSR `json:"CSR,omitempty"`
-	Err error      `json:"err,omitempty"`
+	CSR csr.CSR `json:"CSR,omitempty"`
+	Err error   `json:"err,omitempty"`
 }
 
 func (r getPendingCSRDBResponse) error() error { return r.Err }
@@ -128,11 +128,12 @@ type getPendingCSRFileResponse struct {
 }
 
 type putChangeCSRStatusRequest struct {
-	CSR crypto.CSR
+	CSR csr.CSR
 	ID  int
 }
 
 type putChangeCSRsResponse struct {
+	CSR csr.CSR
 	Err error
 }
 

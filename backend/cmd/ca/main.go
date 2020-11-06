@@ -1,14 +1,10 @@
 package main
 
 import (
-	"enroller/pkg/enroller/api"
-	"enroller/pkg/enroller/auth"
-	"enroller/pkg/enroller/configs"
-	certsdb "enroller/pkg/enroller/models/certs/store/db"
-	certsfile "enroller/pkg/enroller/models/certs/store/file"
-	csrdb "enroller/pkg/enroller/models/csr/store/db"
-	csrfile "enroller/pkg/enroller/models/csr/store/file"
-	secrets "enroller/pkg/enroller/secrets/file"
+	"enroller/pkg/ca/api"
+	"enroller/pkg/ca/auth"
+	"enroller/pkg/ca/configs"
+	"enroller/pkg/ca/secrets/vault"
 	"flag"
 	"fmt"
 	"net/http"
@@ -25,23 +21,12 @@ func main() {
 		panic(err)
 	}
 
-	csrConnStr := "dbname=" + cfg.PostgresDB + " user=" + cfg.PostgresUser + " password=" + cfg.PostgresPassword + " host=" + cfg.PostgresHostname + " port=" + cfg.PostgresPort + " sslmode=disable"
-	csrdb, err := csrdb.NewDB("postgres", csrConnStr)
-	if err != nil {
-		panic(err)
-	}
-	csrfile := csrfile.NewFile(cfg.HomePath)
-
-	certsConnStr := "dbname=" + cfg.PostgresDB + " user=" + cfg.PostgresUser + " password=" + cfg.PostgresPassword + " host=" + cfg.PostgresHostname + " port=" + cfg.PostgresPort + " sslmode=disable"
-	certsdb, err := certsdb.NewDB("postgres", certsConnStr)
-	if err != nil {
-		panic(err)
-	}
-	certsfile := certsfile.NewFile(cfg.HomePath)
-
 	auth := auth.NewAuth(cfg.KeycloakHostname, cfg.KeycloakPort, cfg.KeycloakProtocol, cfg.KeycloakRealm)
+	secrets, err := vault.NewVaultSecrets(cfg.VaultAddress, cfg.VaultRoleID, cfg.VaultSecretID)
 
-	secrets := secrets.NewFile(cfg.CACertFile, cfg.CAKeyFile, certsdb)
+	if err != nil {
+		panic(err)
+	}
 
 	var (
 		httpAddr = flag.String("http.addr", ":"+cfg.Port, "HTTPS listen address")
@@ -57,7 +42,7 @@ func main() {
 
 	var s api.Service
 	{
-		s = api.NewEnrollerService(csrdb, csrfile, certsdb, certsfile, secrets, cfg.HomePath)
+		s = api.NewCAService(secrets)
 		s = api.LoggingMiddleware(logger)(s)
 	}
 

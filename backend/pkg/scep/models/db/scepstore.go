@@ -52,7 +52,7 @@ func (db *DB) GetCRTs() (crypto.CRTs, error) {
 
 	for rows.Next() {
 		var crt crypto.CRT
-		err := rows.Scan(&crt.Status, &crt.ExpirationDate, &crt.RevocationDate, &crt.Serial, &crt.DN, &crt.CRTPath)
+		err := rows.Scan(&crt.Status, &crt.ExpirationDate, &crt.RevocationDate, &crt.Serial, &crt.DN, &crt.CRTPath, &crt.Key, &crt.KeySize)
 		if err != nil {
 			return crypto.CRTs{CRTs: []crypto.CRT{}}, err
 		}

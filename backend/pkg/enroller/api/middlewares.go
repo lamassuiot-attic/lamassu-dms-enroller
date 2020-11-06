@@ -2,7 +2,7 @@ package api
 
 import (
 	"context"
-	"enroller/pkg/enroller/crypto"
+	"enroller/pkg/enroller/models/csr"
 	"time"
 
 	"github.com/go-kit/kit/log"
@@ -24,21 +24,21 @@ type loggingMiddleware struct {
 	logger log.Logger
 }
 
-func (mw loggingMiddleware) PostCSR(ctx context.Context, data []byte) (csr crypto.CSR, err error) {
+func (mw loggingMiddleware) PostCSR(ctx context.Context, data []byte) (csr csr.CSR, err error) {
 	defer func(begin time.Time) {
 		mw.logger.Log("method", "PostCSR", "took", time.Since(begin), "err", err)
 	}(time.Now())
 	return mw.next.PostCSR(ctx, data)
 }
 
-func (mw loggingMiddleware) GetPendingCSRs(ctx context.Context) (csrs crypto.CSRs) {
+func (mw loggingMiddleware) GetPendingCSRs(ctx context.Context) (csrs csr.CSRs) {
 	defer func(begin time.Time) {
 		mw.logger.Log("method", "GetPendingCSRs", "took", time.Since(begin))
 	}(time.Now())
 	return mw.next.GetPendingCSRs(ctx)
 }
 
-func (mw loggingMiddleware) GetPendingCSRDB(ctx context.Context, id int) (csr crypto.CSR, err error) {
+func (mw loggingMiddleware) GetPendingCSRDB(ctx context.Context, id int) (csr csr.CSR, err error) {
 	defer func(begin time.Time) {
 		mw.logger.Log("method", "GetPendingCSRDB", "id", id, "took", time.Since(begin), "err", err)
 	}(time.Now())
@@ -52,7 +52,7 @@ func (mw loggingMiddleware) GetPendingCSRFile(ctx context.Context, id int) (data
 	return mw.next.GetPendingCSRFile(ctx, id)
 }
 
-func (mw loggingMiddleware) PutChangeCSRStatus(ctx context.Context, csr crypto.CSR, id int) (err error) {
+func (mw loggingMiddleware) PutChangeCSRStatus(ctx context.Context, csr csr.CSR, id int) (c csr.CSR, err error) {
 	defer func(begin time.Time) {
 		mw.logger.Log("method", "PutChangeCSRStatus", "id", id, "status", csr.Status, "took", time.Since(begin), "err", err)
 	}(time.Now())

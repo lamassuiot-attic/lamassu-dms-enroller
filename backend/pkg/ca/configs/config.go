@@ -5,14 +5,6 @@ import "github.com/kelseyhightower/envconfig"
 type Config struct {
 	Port string
 
-	PostgresUser     string
-	PostgresDB       string
-	PostgresPassword string
-	PostgresHostname string
-	PostgresPort     string
-
-	HomePath string
-
 	EnrollerUIHost     string
 	EnrollerUIPort     string
 	EnrollerUIProtocol string
@@ -22,8 +14,9 @@ type Config struct {
 	KeycloakProtocol string
 	KeycloakRealm    string
 
-	CACertFile string
-	CAKeyFile  string
+	VaultAddress  string
+	VaultRoleID   string
+	VaultSecretID string
 
 	CertFile string
 	KeyFile  string
@@ -31,7 +24,7 @@ type Config struct {
 
 func NewConfig() (error, Config) {
 	var cfg Config
-	err := envconfig.Process("enroller", &cfg)
+	err := envconfig.Process("ca", &cfg)
 	if err != nil {
 		return err, Config{}
 	}

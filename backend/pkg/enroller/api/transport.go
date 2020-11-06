@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"enroller/pkg/enroller/auth"
-	"enroller/pkg/enroller/crypto"
+	"enroller/pkg/enroller/models/csr"
 	"io/ioutil"
 	"net/http"
 	"strconv"
@@ -66,7 +66,7 @@ func MakeHTTPHandler(s Service, logger log.Logger, auth auth.Auth) http.Handler 
 	r.Methods("PUT").Path("/v1/csrs/{id}").Handler(httptransport.NewServer(
 		jwt.NewParser(auth.Kf, stdjwt.SigningMethodRS256, auth.KeycloakClaimsFactory)(e.PutChangeCSRStatusEndpoint),
 		decodePutChangeCSRStatusRequest,
-		encodeResponse,
+		encodePutChangeCSRStatusResponse,
 		options...,
 	))
 
@@ -131,14 +131,14 @@ func decodePutChangeCSRStatusRequest(ctx context.Context, r *http.Request) (requ
 	if err != nil {
 		return nil, ErrBadRouting
 	}
-	var csr crypto.CSR
-	if err := json.NewDecoder(r.Body).Decode(&csr); err != nil {
+	var c csr.CSR
+	if err := json.NewDecoder(r.Body).Decode(&c); err != nil {
 		return nil, err
 	}
-	if csr.Status == "" {
+	if c.Status == "" {
 		return nil, ErrIncorrectContent
 	}
-	return putChangeCSRStatusRequest{CSR: csr, ID: idNum}, nil
+	return putChangeCSRStatusRequest{CSR: c, ID: idNum}, nil
 
 }
 
@@ -175,8 +175,7 @@ func encodePostCSRResponse(ctx context.Context, w http.ResponseWriter, response 
 		return nil
 	}
 	w.Header().Set("Content-Type", "application/hal+json; charset=utf-8")
-	csrHal := hal.NewResource(resp.CSR, "http://localhost:8080/v1/csrs")
-	csrHal.AddNewLink("csr", "http://localhost:8080/v1/csrs/"+strconv.Itoa(resp.CSR.Id))
+	csrHal := hal.NewResource(resp.CSR, "http://localhost:8080/v1/csrs/"+strconv.Itoa(resp.CSR.Id))
 	return json.NewEncoder(w).Encode(csrHal)
 }
 
@@ -203,6 +202,17 @@ func encodeGetPendingCSRResponse(ctx context.Context, w http.ResponseWriter, res
 		"type": string("application/pkcs10"),
 	})
 	csrHal.AddLink("file", csrLink)
+	return json.NewEncoder(w).Encode(csrHal)
+}
+
+func encodePutChangeCSRStatusResponse(ctx context.Context, w http.ResponseWriter, response interface{}) error {
+	resp := response.(putChangeCSRsResponse)
+	if resp.Err != nil {
+		encodeError(ctx, resp.Err, w)
+		return nil
+	}
+	w.Header().Set("Content-Type", "application/hal+json; charset=utf-8")
+	csrHal := hal.NewResource(resp.CSR, "http://localhost:8080/v1/csrs/"+strconv.Itoa(resp.CSR.Id))
 	return json.NewEncoder(w).Encode(csrHal)
 }
 

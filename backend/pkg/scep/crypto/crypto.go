@@ -14,6 +14,8 @@ type CRT struct {
 	Serial         string `json:"serial"`
 	DN             string `json:"dn"`
 	CRTPath        string `json:"crtpath"`
+	Key            string `json:"key"`
+	KeySize        int    `json:"keySize"`
 }
 
 type CRTs struct {
