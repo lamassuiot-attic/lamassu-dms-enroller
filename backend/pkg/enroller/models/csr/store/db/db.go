@@ -49,6 +49,60 @@ func (db *DB) Insert(c csr.CSR) (int, error) {
 	return id, nil
 }
 
+func (db *DB) SelectAll() csr.CSRs {
+	sqlStatement := `
+	SELECT * 
+	FROM csr_store;
+	`
+	rows, err := db.Query(sqlStatement)
+	if err != nil {
+		return csr.CSRs{CSRs: []csr.CSR{}}
+	}
+	defer rows.Close()
+	csrs := make([]csr.CSR, 0)
+
+	for rows.Next() {
+		var c csr.CSR
+		err := rows.Scan(&c.Id, &c.CountryName, &c.StateOrProvinceName, &c.LocalityName, &c.OrganizationName, &c.OrganizationalUnitName, &c.CommonName, &c.EmailAddress, &c.Status, &c.CsrFilePath)
+		if err != nil {
+			return csr.CSRs{CSRs: []csr.CSR{}}
+		}
+		csrs = append(csrs, c)
+	}
+	if err = rows.Err(); err != nil {
+		return csr.CSRs{CSRs: []csr.CSR{}}
+	}
+	return csr.CSRs{CSRs: csrs}
+}
+
+func (db *DB) SelectAllByCN(cn string) csr.CSRs {
+	sqlStatement := `
+	SELECT * 
+	FROM csr_store
+	WHERE commonName = $1;
+	`
+
+	rows, err := db.Query(sqlStatement, cn)
+	if err != nil {
+		return csr.CSRs{CSRs: []csr.CSR{}}
+	}
+	defer rows.Close()
+	csrs := make([]csr.CSR, 0)
+
+	for rows.Next() {
+		var c csr.CSR
+		err := rows.Scan(&c.Id, &c.CountryName, &c.StateOrProvinceName, &c.LocalityName, &c.OrganizationName, &c.OrganizationalUnitName, &c.CommonName, &c.EmailAddress, &c.Status, &c.CsrFilePath)
+		if err != nil {
+			return csr.CSRs{CSRs: []csr.CSR{}}
+		}
+		csrs = append(csrs, c)
+	}
+	if err = rows.Err(); err != nil {
+		return csr.CSRs{CSRs: []csr.CSR{}}
+	}
+	return csr.CSRs{CSRs: csrs}
+}
+
 func (db *DB) SelectByStatus(status string) csr.CSRs {
 	sqlStatement := `
 	SELECT * 

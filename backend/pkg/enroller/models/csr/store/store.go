@@ -4,6 +4,8 @@ import "enroller/pkg/enroller/models/csr"
 
 type DB interface {
 	Insert(c csr.CSR) (int, error)
+	SelectAll() csr.CSRs
+	SelectAllByCN(cn string) csr.CSRs
 	SelectByStatus(status string) csr.CSRs
 	SelectByID(id int) (csr.CSR, error)
 	UpdateByID(id int, c csr.CSR) (csr.CSR, error)

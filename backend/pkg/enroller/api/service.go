@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/x509"
+	"enroller/pkg/enroller/auth"
 	"enroller/pkg/enroller/crypto"
 	"enroller/pkg/enroller/models/certs"
 	certstore "enroller/pkg/enroller/models/certs/store"
@@ -17,6 +18,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/go-kit/kit/auth/jwt"
 )
 
 type Service interface {
@@ -107,7 +110,14 @@ func (s *enrollerService) insertCSRFile(data []byte, id int) error {
 }
 
 func (s *enrollerService) GetPendingCSRs(ctx context.Context) csrmodel.CSRs {
-	csrs := s.csrDBStore.SelectByStatus(csrmodel.PendingStatus)
+	var csrs csr.CSRs
+	claims := ctx.Value(jwt.JWTClaimsContextKey).(*auth.KeycloakClaims)
+	admin := containsRole(claims.RealmAccess.RoleNames, "admin")
+	if admin {
+		csrs = s.csrDBStore.SelectAll()
+	} else {
+		csrs = s.csrDBStore.SelectAllByCN(claims.PreferredUsername)
+	}
 	return csrs
 }
 
@@ -133,6 +143,10 @@ func (s *enrollerService) PutChangeCSRStatus(ctx context.Context, csr csrmodel.C
 	case csrmodel.ApprobedStatus:
 		err = s.approbeCSR(id, csr)
 	case csrmodel.RevokedStatus:
+		_, err = s.csrDBStore.UpdateByID(id, csr)
+		if err != nil {
+			return csrmodel.CSR{}, err
+		}
 		err = s.revokeCert(id)
 	case csrmodel.DeniedStatus, csrmodel.PendingStatus:
 		_, err = s.csrDBStore.UpdateByID(id, csr)
@@ -289,4 +303,13 @@ func makeOpenSSLTime(t time.Time) string {
 	y := (int(t.Year()) % 100)
 	validDate := fmt.Sprintf("%02d%02d%02d%02d%02d%02dZ", y, t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second())
 	return validDate
+}
+
+func containsRole(list []string, value string) bool {
+	for _, item := range list {
+		if item == value {
+			return true
+		}
+	}
+	return false
 }

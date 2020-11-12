@@ -15,11 +15,12 @@ import (
 type File struct {
 	CACert       string
 	CAKey        string
+	OCSPServer   string
 	certsDBStore certstore.DB
 }
 
-func NewFile(CACert string, CAKey string, certsDBStore certstore.DB) secrets.Secrets {
-	return &File{CACert: CACert, CAKey: CAKey, certsDBStore: certsDBStore}
+func NewFile(CACert string, CAKey string, OCSPServer string, certsDBStore certstore.DB) secrets.Secrets {
+	return &File{CACert: CACert, CAKey: CAKey, OCSPServer: OCSPServer, certsDBStore: certsDBStore}
 }
 
 func (f *File) SignCSR(csr *x509.CertificateRequest) ([]byte, error) {
@@ -41,6 +42,7 @@ func (f *File) SignCSR(csr *x509.CertificateRequest) ([]byte, error) {
 		NotBefore:    time.Now().Add(-600).UTC(),
 		NotAfter:     time.Now().AddDate(0, 0, 365).UTC(),
 		KeyUsage:     x509.KeyUsageDigitalSignature,
+		OCSPServer:   []string{f.OCSPServer},
 		ExtKeyUsage: []x509.ExtKeyUsage{
 			x509.ExtKeyUsageClientAuth,
 		},

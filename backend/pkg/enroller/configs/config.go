@@ -27,6 +27,8 @@ type Config struct {
 
 	CertFile string
 	KeyFile  string
+
+	OCSPServer string
 }
 
 func NewConfig() (error, Config) {

@@ -41,7 +41,7 @@ func main() {
 
 	auth := auth.NewAuth(cfg.KeycloakHostname, cfg.KeycloakPort, cfg.KeycloakProtocol, cfg.KeycloakRealm)
 
-	secrets := secrets.NewFile(cfg.CACertFile, cfg.CAKeyFile, certsdb)
+	secrets := secrets.NewFile(cfg.CACertFile, cfg.CAKeyFile, cfg.OCSPServer, certsdb)
 
 	var (
 		httpAddr = flag.String("http.addr", ":"+cfg.Port, "HTTPS listen address")
