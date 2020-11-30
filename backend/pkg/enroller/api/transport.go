@@ -7,6 +7,7 @@ import (
 	"enroller/pkg/enroller/models/csr"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"strconv"
 
 	"github.com/gorilla/mux"
@@ -94,7 +95,7 @@ func decodePostCSRRequest(ctx context.Context, r *http.Request) (request interfa
 	}
 	data, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		return nil, err
+		return nil, ErrEmptyBody
 	}
 	req := postCSRRequest{
 		data: data,
@@ -112,11 +113,11 @@ func decodeGetPendingCSRRequest(ctx context.Context, r *http.Request) (request i
 	vars := mux.Vars(r)
 	id, ok := vars["id"]
 	if !ok {
-		return nil, ErrBadRouting
+		return nil, ErrInvalidID
 	}
 	idNum, err := strconv.Atoi(id)
 	if err != nil {
-		return nil, ErrBadRouting
+		return nil, ErrInvalidIDFormat
 	}
 	return getPendingCSRRequest{ID: idNum}, nil
 }
@@ -125,18 +126,18 @@ func decodePutChangeCSRStatusRequest(ctx context.Context, r *http.Request) (requ
 	vars := mux.Vars(r)
 	id, ok := vars["id"]
 	if !ok {
-		return nil, ErrBadRouting
+		return nil, ErrInvalidID
 	}
 	idNum, err := strconv.Atoi(id)
 	if err != nil {
-		return nil, ErrBadRouting
+		return nil, ErrInvalidIDFormat
 	}
 	var c csr.CSR
 	if err := json.NewDecoder(r.Body).Decode(&c); err != nil {
 		return nil, err
 	}
 	if c.Status == "" {
-		return nil, ErrIncorrectContent
+		return nil, ErrInvalidCSR
 	}
 	return putChangeCSRStatusRequest{CSR: c, ID: idNum}, nil
 
@@ -146,11 +147,11 @@ func decodeDeleteCSRRequest(ctx context.Context, r *http.Request) (request inter
 	vars := mux.Vars(r)
 	id, ok := vars["id"]
 	if !ok {
-		return nil, ErrBadRouting
+		return nil, ErrInvalidID
 	}
 	idNum, err := strconv.Atoi(id)
 	if err != nil {
-		return nil, ErrBadRouting
+		return nil, ErrInvalidIDFormat
 	}
 	return deleteCSRRequest{ID: idNum}, nil
 }
@@ -159,11 +160,11 @@ func decodeGetCRTRequest(ctx context.Context, r *http.Request) (request interfac
 	vars := mux.Vars(r)
 	id, ok := vars["id"]
 	if !ok {
-		return nil, ErrBadRouting
+		return nil, ErrInvalidID
 	}
 	idNum, err := strconv.Atoi(id)
 	if err != nil {
-		return nil, ErrBadRouting
+		return nil, ErrInvalidIDFormat
 	}
 	return getCRTRequest{ID: idNum}, nil
 }
@@ -175,16 +176,18 @@ func encodePostCSRResponse(ctx context.Context, w http.ResponseWriter, response 
 		return nil
 	}
 	w.Header().Set("Content-Type", "application/hal+json; charset=utf-8")
-	csrHal := hal.NewResource(resp.CSR, "http://localhost:8080/v1/csrs/"+strconv.Itoa(resp.CSR.Id))
+	url := "http://" + os.Getenv("ENROLLER_HOST") + os.Getenv("ENROLLER_PORT") + "/v1/csrs"
+	csrHal := hal.NewResource(resp.CSR, url+strconv.Itoa(resp.CSR.Id))
 	return json.NewEncoder(w).Encode(csrHal)
 }
 
 func encodeGetPendingCSRsResponse(ctx context.Context, w http.ResponseWriter, response interface{}) error {
 	resp := response.(getPendingCSRsResponse)
 	w.Header().Set("Content-Type", "application/hal+json; charset=utf-8")
-	embedHal := hal.NewResource(resp.CSRs, "http://localhost:8080/v1/csrs")
+	url := "http://" + os.Getenv("ENROLLER_HOST") + os.Getenv("ENROLLER_PORT") + "/v1/csrs"
+	embedHal := hal.NewResource(resp.CSRs, url)
 	for _, csr := range resp.CSRs.CSRs {
-		csrHal := hal.NewResource(csr, "http://localhost:8080/v1/csrs/"+strconv.Itoa(csr.Id))
+		csrHal := hal.NewResource(csr, url+strconv.Itoa(csr.Id))
 		embedHal.Embed("csr", csrHal)
 	}
 	return json.NewEncoder(w).Encode(embedHal)
@@ -197,8 +200,9 @@ func encodeGetPendingCSRResponse(ctx context.Context, w http.ResponseWriter, res
 		return nil
 	}
 	w.Header().Set("Content-Type", "application/hal+json; charset=utf-8")
-	csrHal := hal.NewResource(resp.CSR, "http://localhost:8080/v1/csrs/"+strconv.Itoa(resp.CSR.Id))
-	csrLink := hal.NewLink("http://localhost:8080/v1/csrs/"+strconv.Itoa(resp.CSR.Id)+"/file", hal.LinkAttr{
+	url := "http://" + os.Getenv("ENROLLER_HOST") + os.Getenv("ENROLLER_PORT") + "/v1/csrs"
+	csrHal := hal.NewResource(resp.CSR, url+strconv.Itoa(resp.CSR.Id))
+	csrLink := hal.NewLink(url+strconv.Itoa(resp.CSR.Id)+"/file", hal.LinkAttr{
 		"type": string("application/pkcs10"),
 	})
 	csrHal.AddLink("file", csrLink)
@@ -212,7 +216,8 @@ func encodePutChangeCSRStatusResponse(ctx context.Context, w http.ResponseWriter
 		return nil
 	}
 	w.Header().Set("Content-Type", "application/hal+json; charset=utf-8")
-	csrHal := hal.NewResource(resp.CSR, "http://localhost:8080/v1/csrs/"+strconv.Itoa(resp.CSR.Id))
+	url := "http://" + os.Getenv("ENROLLER_HOST") + os.Getenv("ENROLLER_PORT") + "/v1/csrs"
+	csrHal := hal.NewResource(resp.CSR, url+strconv.Itoa(resp.CSR.Id))
 	return json.NewEncoder(w).Encode(csrHal)
 }
 
@@ -258,8 +263,10 @@ func encodeError(_ context.Context, err error, w http.ResponseWriter) {
 
 func codeFrom(err error) int {
 	switch err {
-	case ErrIncorrectContent, ErrBadRouting:
+	case ErrInvalidCSR, ErrInvalidIDFormat, ErrInvalidApprobeOp, ErrInvalidDenyOp, ErrInvalidRevokeOp, ErrInvalidDeleteOp, ErrInvalidOperation:
 		return http.StatusBadRequest
+	case ErrInvalidID:
+		return http.StatusNotFound
 	case ErrIncorrectType:
 		return http.StatusUnsupportedMediaType
 	case jwt.ErrTokenExpired, jwt.ErrTokenInvalid, jwt.ErrTokenMalformed, jwt.ErrTokenNotActive, jwt.ErrTokenContextMissing, jwt.ErrUnexpectedSigningMethod:

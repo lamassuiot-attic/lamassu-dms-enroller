@@ -13,17 +13,20 @@ import (
 	"syscall"
 
 	"github.com/go-kit/kit/log"
+	kitprometheus "github.com/go-kit/kit/metrics/prometheus"
+	stdprometheus "github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func main() {
-	err, cfg := configs.NewConfig()
+	err, cfg := configs.NewConfig("scep")
 	if err != nil {
 		panic(err)
 	}
 
 	connStr := "dbname=" + cfg.PostgresDB + " user=" + cfg.PostgresUser + " password=" + cfg.PostgresPassword + " host=" + cfg.PostgresHostname + " port=" + cfg.PostgresPort + " sslmode=disable"
 	db, err := db.NewDB("postgres", connStr)
-	auth := auth.NewAuth(cfg.KeycloakHostname, cfg.KeycloakPort, cfg.KeycloakProtocol, cfg.KeycloakRealm)
+	auth := auth.NewAuth(cfg.KeycloakHostname, cfg.KeycloakPort, cfg.KeycloakProtocol, cfg.KeycloakRealm, cfg.KeycloakCA)
 
 	if err != nil {
 		panic(err)
@@ -41,16 +44,33 @@ func main() {
 		logger = log.With(logger, "caller", log.DefaultCaller)
 	}
 
+	fieldKeys := []string{"method"}
+
 	var s api.Service
 	{
 		s = api.NewSCEPService(db)
 		s = api.LoggingMiddleware(logger)(s)
+		s = api.NewInstrumentingMiddleware(
+			kitprometheus.NewCounterFrom(stdprometheus.CounterOpts{
+				Namespace: "enroller",
+				Subsystem: "scep_service",
+				Name:      "request_count",
+				Help:      "Number of requests received.",
+			}, fieldKeys),
+			kitprometheus.NewSummaryFrom(stdprometheus.SummaryOpts{
+				Namespace: "enroller",
+				Subsystem: "scep_service",
+				Name:      "request_latency_microseconds",
+				Help:      "Total duration of requests in microseconds.",
+			}, fieldKeys),
+		)(s)
 	}
 
 	mux := http.NewServeMux()
 
 	mux.Handle("/v1/", api.MakeHTTPHandler(s, log.With(logger, "component", "HTTPS"), auth))
 	http.Handle("/", accessControl(mux, cfg.EnrollerUIProtocol, cfg.EnrollerUIHost, cfg.EnrollerUIPort))
+	http.Handle("/metrics", promhttp.Handler())
 
 	errs := make(chan error)
 	go func() {

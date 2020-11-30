@@ -20,6 +20,10 @@ type errorer interface {
 	error() error
 }
 
+var (
+	errCAName = errors.New("ca name not provided")
+)
+
 var claims = &auth.KeycloakClaims{}
 
 func MakeHTTPHandler(s Service, logger log.Logger, auth auth.Auth) http.Handler {
@@ -64,7 +68,7 @@ func decodeGetCAInfoRequest(ctx context.Context, r *http.Request) (request inter
 	vars := mux.Vars(r)
 	CA, ok := vars["ca"]
 	if !ok {
-		return nil, errors.New("CA name not provided")
+		return nil, errCAName
 	}
 	return getCAInfoRequest{CA: CA}, nil
 }
@@ -73,7 +77,7 @@ func decodeDeleteCARequest(ctx context.Context, r *http.Request) (request interf
 	vars := mux.Vars(r)
 	CA, ok := vars["ca"]
 	if !ok {
-		return nil, errors.New("CA name not provided")
+		return nil, errCAName
 	}
 	return deleteCARequest{CA: CA}, nil
 }
@@ -99,6 +103,8 @@ func encodeError(_ context.Context, err error, w http.ResponseWriter) {
 
 func codeFrom(err error) int {
 	switch err {
+	case errCAName:
+		return http.StatusBadRequest
 	default:
 		return http.StatusInternalServerError
 	}

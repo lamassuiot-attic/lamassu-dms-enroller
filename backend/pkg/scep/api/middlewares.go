@@ -26,14 +26,25 @@ type loggingMiddleware struct {
 
 func (mw loggingMiddleware) GetSCEPCRTs(ctx context.Context) (crts crypto.CRTs, err error) {
 	defer func(begin time.Time) {
-		mw.logger.Log("method", "GetSCEPCRTs", "took", time.Since(begin), "err", err)
+		mw.logger.Log(
+			"method", "GetSCEPCRTs",
+			"number_crts", len(crts.CRTs),
+			"took", time.Since(begin),
+			"err", err,
+		)
 	}(time.Now())
 	return mw.next.GetSCEPCRTs(ctx)
 }
 
 func (mw loggingMiddleware) RevokeSCEPCRT(ctx context.Context, dn string, serial string) (err error) {
 	defer func(begin time.Time) {
-		mw.logger.Log("method", "RevokeSCEPCRT", "dn", dn, "serial", serial, "took", time.Since(begin), "err", err)
+		mw.logger.Log(
+			"method", "RevokeSCEPCRT",
+			"dn", dn,
+			"serial", serial,
+			"took", time.Since(begin),
+			"err", err,
+		)
 	}(time.Now())
 	return mw.next.RevokeSCEPCRT(ctx, dn, serial)
 }

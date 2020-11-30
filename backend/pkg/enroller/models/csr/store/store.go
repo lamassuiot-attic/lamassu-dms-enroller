@@ -10,6 +10,7 @@ type DB interface {
 	SelectByID(id int) (csr.CSR, error)
 	UpdateByID(id int, c csr.CSR) (csr.CSR, error)
 	UpdateFilePath(c csr.CSR) error
+	Delete(id int) error
 }
 
 type File interface {

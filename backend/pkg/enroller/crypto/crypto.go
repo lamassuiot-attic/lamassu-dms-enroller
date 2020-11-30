@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
+	"io/ioutil"
 )
 
 const (
@@ -46,4 +47,14 @@ func CheckPEMBlock(pemBlock *pem.Block, blockType string) error {
 		return errors.New("unmatched type of headers")
 	}
 	return nil
+}
+
+func CreateCAPool(CAPath string) (*x509.CertPool, error) {
+	caCert, err := ioutil.ReadFile(CAPath)
+	if err != nil {
+		return nil, err
+	}
+	caCertPool := x509.NewCertPool()
+	caCertPool.AppendCertsFromPEM(caCert)
+	return caCertPool, nil
 }

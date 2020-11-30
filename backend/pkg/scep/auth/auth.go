@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"enroller/pkg/scep/crypto"
 	"errors"
@@ -19,6 +20,7 @@ type auth struct {
 	keycloakPort     string
 	keycloakProtocol string
 	keycloakRealm    string
+	keycloakCA       string
 }
 
 type Roles struct {
@@ -50,8 +52,10 @@ type KeycloakClaims struct {
 }
 
 var (
-	errBadKey              = errors.New("Unexpected JWT key signing method")
-	errBadPublicKeyRequest = errors.New("Error verifying token")
+	errBadKey              = errors.New("unexpected JWT key signing method")
+	errBadPublicKeyRequest = errors.New("unable to obtain public key from Keycloak")
+	errBadPublicKeyParse   = errors.New("unable to parse Keycloak public key")
+	errKeycloakCA          = errors.New("error reading Keycloak CA")
 )
 
 type KeycloakPublic struct {
@@ -62,8 +66,13 @@ type KeycloakPublic struct {
 	TokensNotBefore int    `json:"tokens-not-before"`
 }
 
-func NewAuth(keycloakHost string, keycloakPort string, keycloakProtocol string, keycloakRealm string) Auth {
-	return &auth{keycloakHost: keycloakHost, keycloakPort: keycloakPort, keycloakProtocol: keycloakProtocol, keycloakRealm: keycloakRealm}
+func NewAuth(keycloakHost string, keycloakPort string, keycloakProtocol string, keycloakRealm string, keycloakCA string) Auth {
+	return &auth{keycloakHost: keycloakHost,
+		keycloakPort:     keycloakPort,
+		keycloakProtocol: keycloakProtocol,
+		keycloakRealm:    keycloakRealm,
+		keycloakCA:       keycloakCA,
+	}
 }
 
 func (a *auth) KeycloakClaimsFactory() stdjwt.Claims {
@@ -77,17 +86,30 @@ func (a *auth) Kf(token *stdjwt.Token) (interface{}, error) {
 	}
 
 	keycloakURL := a.keycloakProtocol + "://" + a.keycloakHost + ":" + a.keycloakPort + "/auth/realms/" + a.keycloakRealm
-	r, err := http.Get(keycloakURL) // This should be changed in order to verify the server certificate in case HTTPS is being used.
+	caCertPool, err := crypto.CreateCAPool(a.keycloakCA)
+	if err != nil {
+		return nil, errKeycloakCA
+	}
+
+	client := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				RootCAs: caCertPool,
+			},
+		},
+	}
+
+	r, err := client.Get(keycloakURL)
 	if err != nil {
 		return nil, errBadPublicKeyRequest
 	}
 	var keyPublic KeycloakPublic
 	if err := json.NewDecoder(r.Body).Decode(&keyPublic); err != nil {
-		return nil, err
+		return nil, errBadPublicKeyRequest
 	}
 	pubKey, err := crypto.ParseKeycloakPublicKey([]byte(crypto.PublicKeyHeader + "\n" + keyPublic.PublicKey + "\n" + crypto.PublicKeyFooter))
 	if err != nil {
-		return nil, err
+		return nil, errBadPublicKeyParse
 	}
 	return pubKey, nil
 }

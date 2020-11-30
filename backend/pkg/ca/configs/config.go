@@ -13,18 +13,20 @@ type Config struct {
 	KeycloakPort     string
 	KeycloakProtocol string
 	KeycloakRealm    string
+	KeycloakCA       string
 
 	VaultAddress  string
 	VaultRoleID   string
 	VaultSecretID string
+	VaultCA       string
 
 	CertFile string
 	KeyFile  string
 }
 
-func NewConfig() (error, Config) {
+func NewConfig(prefix string) (error, Config) {
 	var cfg Config
-	err := envconfig.Process("ca", &cfg)
+	err := envconfig.Process(prefix, &cfg)
 	if err != nil {
 		return err, Config{}
 	}

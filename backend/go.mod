@@ -4,13 +4,14 @@ go 1.13
 
 require (
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
-	github.com/go-kit/kit v0.9.0
-	github.com/go-logfmt/logfmt v0.4.0 // indirect
+	github.com/go-kit/kit v0.10.0
 	github.com/go-stack/stack v1.8.0 // indirect
-	github.com/gorilla/mux v1.7.3
-	github.com/hashicorp/vault/api v1.0.4
+	github.com/gorilla/mux v1.7.4
+	github.com/hashicorp/vault v1.6.0
+	github.com/hashicorp/vault/api v1.0.5-0.20201001211907-38d91b749c77
+	github.com/hashicorp/vault/sdk v0.1.14-0.20201109203410-5e6e24692b32
 	github.com/kelseyhightower/envconfig v1.4.0
-	github.com/lib/pq v1.2.0
+	github.com/lib/pq v1.8.0
 	github.com/nvellon/hal v0.3.0
-	google.golang.org/grpc v1.25.1 // indirect
+	github.com/prometheus/client_golang v1.8.0
 )

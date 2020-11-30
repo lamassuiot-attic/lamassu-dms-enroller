@@ -42,3 +42,12 @@ func (f *File) SelectByID(id int) ([]byte, error) {
 	}
 	return data, nil
 }
+
+func (f *File) Delete(id int) error {
+	name := f.dirPath + "/" + strconv.Itoa(id) + ".crt"
+	err := os.Remove(name)
+	if err != nil {
+		return err
+	}
+	return nil
+}

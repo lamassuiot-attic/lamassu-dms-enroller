@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
+	"io/ioutil"
 )
 
 type CRT struct {
@@ -37,4 +38,14 @@ func ParseKeycloakPublicKey(data []byte) (*rsa.PublicKey, error) {
 	}
 	pubKey := parsedKey.(*rsa.PublicKey)
 	return pubKey, nil
+}
+
+func CreateCAPool(CAPath string) (*x509.CertPool, error) {
+	caCert, err := ioutil.ReadFile(CAPath)
+	if err != nil {
+		return nil, err
+	}
+	caCertPool := x509.NewCertPool()
+	caCertPool.AppendCertsFromPEM(caCert)
+	return caCertPool, nil
 }

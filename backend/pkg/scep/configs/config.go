@@ -19,14 +19,15 @@ type Config struct {
 	KeycloakPort     string
 	KeycloakProtocol string
 	KeycloakRealm    string
+	KeycloakCA       string
 
 	CertFile string
 	KeyFile  string
 }
 
-func NewConfig() (error, Config) {
+func NewConfig(prefix string) (error, Config) {
 	var cfg Config
-	err := envconfig.Process("scep", &cfg)
+	err := envconfig.Process(prefix, &cfg)
 	if err != nil {
 		return err, Config{}
 	}

@@ -35,6 +35,40 @@ func checkDBAlive(db *sql.DB) error {
 	return err
 }
 
+func (db *DB) InsertCRT(crt crypto.CRT) error {
+	sqlStatement := `
+
+	INSERT INTO ca_store(status, expirationDate, revocationDate, serial, dn, certPath, key, keySize)
+	VALUES($1, $2, $3, $4, $5, $6, $7, $8)
+	RETURNING serial;
+	`
+	serialHex := fmt.Sprintf("%x", crt.Serial)
+	var serial string
+
+	err := db.QueryRow(sqlStatement, crt.Status, crt.ExpirationDate, crt.RevocationDate, serialHex, crt.DN, crt.CRTPath, crt.Key, crt.KeySize).Scan(&serial)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (db *DB) SelectCRT(dn string, serial string) (crypto.CRT, error) {
+	sqlStatement := `
+	SELECT *
+	FROM ca_store
+	WHERE dn = $1 AND serial = $2;
+	`
+	serialHex := fmt.Sprintf("%x", serial)
+
+	row := db.QueryRow(sqlStatement, dn, serialHex)
+	var crt crypto.CRT
+	err := row.Scan(&crt.Status, &crt.ExpirationDate, &crt.RevocationDate, &crt.Serial, &crt.DN, &crt.CRTPath, &crt.Key, &crt.KeySize)
+	if err != nil {
+		return crypto.CRT{}, err
+	}
+	return crt, nil
+}
+
 func (db *DB) GetCRTs() (crypto.CRTs, error) {
 	sqlStatement := `
 	SELECT *
@@ -67,17 +101,14 @@ func (db *DB) GetCRTs() (crypto.CRTs, error) {
 }
 
 func (db *DB) RevokeCRT(dn string, serial string) error {
-	err := db.CheckRevoked(dn, serial)
-	if err != nil {
-		return err
-	}
+	serialHex := fmt.Sprintf("%x", serial)
 
 	sqlStatement := `
 	UPDATE ca_store
 	SET status = 'R', revocationDate = $1
 	WHERE dn = $2 AND serial = $3;
 	`
-	res, err := db.Exec(sqlStatement, makeOpenSSLTime(time.Now()), dn, serial)
+	res, err := db.Exec(sqlStatement, makeOpenSSLTime(time.Now()), dn, serialHex)
 	if err != nil {
 		return err
 	}
@@ -93,20 +124,22 @@ func (db *DB) RevokeCRT(dn string, serial string) error {
 	return nil
 }
 
-func (db *DB) CheckRevoked(dn string, serial string) error {
+func (db *DB) Delete(dn string, serial string) error {
 	sqlStatement := `
-	SELECT status
-	FROM ca_store
+	DELETE FROM ca_store
 	WHERE dn = $1 AND serial = $2;
 	`
-	row := db.QueryRow(sqlStatement, dn, serial)
-	var status string
-	err := row.Scan(&status)
+	serialHex := fmt.Sprintf("%x", serial)
+	res, err := db.Exec(sqlStatement, dn, serialHex)
 	if err != nil {
 		return err
 	}
-	if status == "R" {
-		return errors.New("The certificate is already revoked")
+	count, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if count <= 0 {
+		return errors.New("No updates")
 	}
 	return nil
 }

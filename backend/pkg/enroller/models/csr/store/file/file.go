@@ -44,7 +44,7 @@ func (f *File) SelectByID(id int) ([]byte, error) {
 }
 
 func (f *File) Delete(id int) error {
-	name := f.dirPath + "/" + strconv.Itoa(id) + ".crt"
+	name := f.dirPath + "/" + strconv.Itoa(id) + ".csr"
 	err := os.Remove(name)
 	if err != nil {
 		return err

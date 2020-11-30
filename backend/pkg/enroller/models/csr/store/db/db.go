@@ -184,7 +184,7 @@ func (db *DB) UpdateFilePath(c csr.CSR) error {
 	return nil
 }
 
-func (db *DB) DeleteCSR(id int) error {
+func (db *DB) Delete(id int) error {
 	sqlStatement := `
 	DELETE FROM csr_store
 	WHERE id = $1;
@@ -201,19 +201,4 @@ func (db *DB) DeleteCSR(id int) error {
 		return errors.New("No updates")
 	}
 	return nil
-}
-
-// Function for Tests
-func (db *DB) TruncateTable() error {
-	_, err := db.Exec("TRUNCATE TABLE csr_store;")
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-// Function for Tests
-func (db *DB) CloseDB() error {
-	error := db.Close()
-	return error
 }

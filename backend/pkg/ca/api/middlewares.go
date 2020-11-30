@@ -26,21 +26,39 @@ type loggingMiddleware struct {
 
 func (mw loggingMiddleware) GetCAs(ctx context.Context) (CAs secrets.CAs, err error) {
 	defer func(begin time.Time) {
-		mw.logger.Log("method", "GetCAs", "took", time.Since(begin), "err", err)
+		mw.logger.Log(
+			"method", "GetCAs",
+			"number_cas", len(CAs.CAs),
+			"took", time.Since(begin),
+			"err", err,
+		)
 	}(time.Now())
 	return mw.next.GetCAs(ctx)
 }
 
 func (mw loggingMiddleware) GetCAInfo(ctx context.Context, CA string) (CAInfo secrets.CAInfo, err error) {
 	defer func(begin time.Time) {
-		mw.logger.Log("method", "GetCAInfo", "took", time.Since(begin), "err", err)
+		mw.logger.Log(
+			"method", "GetCAInfo",
+			"ca_name", CA,
+			"cn", CAInfo.CN,
+			"key_type", CAInfo.KeyType,
+			"key_bits", CAInfo.KeyBits,
+			"took", time.Since(begin),
+			"err", err,
+		)
 	}(time.Now())
 	return mw.next.GetCAInfo(ctx, CA)
 }
 
 func (mw loggingMiddleware) DeleteCA(ctx context.Context, CA string) (err error) {
 	defer func(begin time.Time) {
-		mw.logger.Log("method", "DeleteCA", "took", time.Since(begin), "err", err)
+		mw.logger.Log(
+			"method", "DeleteCA",
+			"ca_name", CA,
+			"took", time.Since(begin),
+			"err", err,
+		)
 	}(time.Now())
 	return mw.next.DeleteCA(ctx, CA)
 }

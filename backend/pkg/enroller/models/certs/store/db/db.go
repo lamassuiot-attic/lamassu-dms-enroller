@@ -93,5 +93,23 @@ func (db *DB) Revoke(id int, revocationDate string) error {
 		return errors.New("No rows updated")
 	}
 	return nil
+}
 
+func (db *DB) Delete(id int) error {
+	sqlStatement := `
+	DELETE FROM ca_store
+	WHERE id = $1;
+	`
+	res, err := db.Exec(sqlStatement, id)
+	if err != nil {
+		return err
+	}
+	count, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if count <= 0 {
+		return errors.New("No updates")
+	}
+	return nil
 }

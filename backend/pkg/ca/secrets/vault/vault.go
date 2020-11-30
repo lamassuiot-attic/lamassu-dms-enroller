@@ -17,13 +17,12 @@ type vaultSecrets struct {
 	client   *api.Client
 	roleID   string
 	secretID string
-	CA       string
 }
 
-func NewVaultSecrets(address string, roleID string, secretID string) (*vaultSecrets, error) {
+func NewVaultSecrets(address string, roleID string, secretID string, CA string) (*vaultSecrets, error) {
 	conf := api.DefaultConfig()
 	conf.Address = strings.ReplaceAll(conf.Address, "https://127.0.0.1:8200", address)
-	tlsConf := &api.TLSConfig{Insecure: true}
+	tlsConf := &api.TLSConfig{CACert: CA}
 	conf.ConfigureTLS(tlsConf)
 	client, err := api.NewClient(conf)
 	if err != nil {
@@ -73,10 +72,10 @@ func (vs *vaultSecrets) GetCAInfo(CA string) (secrets.CAInfo, error) {
 	}
 	pemBlock, _ := pem.Decode([]byte(resp.Data["certificate"].(string)))
 	if pemBlock == nil {
-		return secrets.CAInfo{}, errors.New("Cannot find the next PEM formatted block")
+		return secrets.CAInfo{}, errors.New("cannot find the next PEM formatted block")
 	}
 	if pemBlock.Type != "CERTIFICATE" || len(pemBlock.Headers) != 0 {
-		return secrets.CAInfo{}, errors.New("Unmatched type of headers")
+		return secrets.CAInfo{}, errors.New("unmatched type of headers")
 	}
 	caCert, err := x509.ParseCertificate(pemBlock.Bytes)
 	if err != nil {

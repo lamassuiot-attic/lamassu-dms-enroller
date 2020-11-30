@@ -59,14 +59,14 @@ func decodePutRevokeSCEPCRTRequest(ctx context.Context, r *http.Request) (reques
 	vars := mux.Vars(r)
 	serial, ok := vars["serial"]
 	if !ok {
-		return nil, ErrBadRouting
+		return nil, ErrInvalidDNOrSerial
 	}
 	var crt crypto.CRT
 	if err := json.NewDecoder(r.Body).Decode(&crt); err != nil {
 		return nil, err
 	}
 	if crt.DN == "" {
-		return nil, ErrIncorrectContent
+		return nil, ErrInvalidCert
 	}
 
 	return putRevokeSCEPCRTRequest{dn: crt.DN, serial: serial}, nil
@@ -93,10 +93,10 @@ func encodeError(_ context.Context, err error, w http.ResponseWriter) {
 
 func codeFrom(err error) int {
 	switch err {
-	case ErrIncorrectContent, ErrBadRouting:
+	case ErrInvalidCert, ErrInvalidRevokeOp:
 		return http.StatusBadRequest
-	case ErrIncorrectType:
-		return http.StatusUnsupportedMediaType
+	case ErrInvalidDNOrSerial:
+		return http.StatusNotFound
 	case jwt.ErrTokenExpired, jwt.ErrTokenInvalid, jwt.ErrTokenMalformed, jwt.ErrTokenNotActive, jwt.ErrTokenContextMissing, jwt.ErrUnexpectedSigningMethod:
 		return http.StatusUnauthorized
 	default:

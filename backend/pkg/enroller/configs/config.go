@@ -21,6 +21,7 @@ type Config struct {
 	KeycloakPort     string
 	KeycloakProtocol string
 	KeycloakRealm    string
+	KeycloakCA       string
 
 	CACertFile string
 	CAKeyFile  string
@@ -31,9 +32,9 @@ type Config struct {
 	OCSPServer string
 }
 
-func NewConfig() (error, Config) {
+func NewConfig(prefix string) (error, Config) {
 	var cfg Config
-	err := envconfig.Process("enroller", &cfg)
+	err := envconfig.Process(prefix, &cfg)
 	if err != nil {
 		return err, Config{}
 	}
