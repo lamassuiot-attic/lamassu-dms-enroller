@@ -8,6 +8,7 @@ import (
 )
 
 type Endpoints struct {
+	HealthEndpoint             endpoint.Endpoint
 	PostCSREndpoint            endpoint.Endpoint
 	GetPendingCSRsEndpoint     endpoint.Endpoint
 	GetPendingCSRDBEndpoint    endpoint.Endpoint
@@ -19,6 +20,7 @@ type Endpoints struct {
 
 func MakeServerEndpoints(s Service) Endpoints {
 	return Endpoints{
+		HealthEndpoint:             MakeHealthEndpoint(s),
 		PostCSREndpoint:            MakePostCSREndpoint(s),
 		GetPendingCSRsEndpoint:     MakeGetPendingCSRsEndpoint(s),
 		GetPendingCSRDBEndpoint:    MakeGetPendingCSRDBEndpoint(s),
@@ -26,6 +28,13 @@ func MakeServerEndpoints(s Service) Endpoints {
 		PutChangeCSRStatusEndpoint: MakePutChangeCSRStatusEndpoint(s),
 		DeleteCSREndpoint:          MakeDeleteCSREndpoint(s),
 		GetCRTEndpoint:             MakeGetCTREndpoint(s),
+	}
+}
+
+func MakeHealthEndpoint(s Service) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
+		healthy := s.Health(ctx)
+		return healthResponse{Healthy: healthy}, nil
 	}
 }
 
@@ -83,6 +92,13 @@ func MakeGetCTREndpoint(s Service) endpoint.Endpoint {
 		data, err := s.GetCRT(ctx, req.ID)
 		return getCRTResponse{Data: data, Err: err}, nil
 	}
+}
+
+type healthRequest struct{}
+
+type healthResponse struct {
+	Healthy bool  `json:"healthy,omitempty"`
+	Err     error `json:"err,omitempty"`
 }
 
 type getCRTRequest struct {

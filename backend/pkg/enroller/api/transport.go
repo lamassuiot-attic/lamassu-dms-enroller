@@ -36,6 +36,13 @@ func MakeHTTPHandler(s Service, logger log.Logger, auth auth.Auth) http.Handler 
 		httptransport.ServerBefore(jwt.HTTPToContext()),
 	}
 
+	r.Methods("GET").Path("/v1/csrs/health").Handler(httptransport.NewServer(
+		e.HealthEndpoint,
+		decodeHealthRequest,
+		encodeResponse,
+		options...,
+	))
+
 	r.Methods("POST").Path("/v1/csrs").Handler(httptransport.NewServer(
 		jwt.NewParser(auth.Kf, stdjwt.SigningMethodRS256, auth.KeycloakClaimsFactory)(e.PostCSREndpoint),
 		decodePostCSRRequest,
@@ -86,6 +93,11 @@ func MakeHTTPHandler(s Service, logger log.Logger, auth auth.Auth) http.Handler 
 	))
 
 	return r
+}
+
+func decodeHealthRequest(ctx context.Context, r *http.Request) (request interface{}, err error) {
+	var req healthRequest
+	return req, nil
 }
 
 func decodePostCSRRequest(ctx context.Context, r *http.Request) (request interface{}, err error) {

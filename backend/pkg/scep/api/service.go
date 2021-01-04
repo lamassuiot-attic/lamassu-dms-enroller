@@ -11,6 +11,7 @@ import (
 )
 
 type Service interface {
+	Health(ctx context.Context) bool
 	GetSCEPCRTs(ctx context.Context) (crypto.CRTs, error)
 	RevokeSCEPCRT(ctx context.Context, dn string, serial string) error
 }
@@ -36,6 +37,10 @@ func NewSCEPService(scepDB db.DBSCEPStore) Service {
 	return &scepService{
 		scepDB: scepDB,
 	}
+}
+
+func (s *scepService) Health(ctx context.Context) bool {
+	return true
 }
 
 func (s *scepService) GetSCEPCRTs(ctx context.Context) (crypto.CRTs, error) {

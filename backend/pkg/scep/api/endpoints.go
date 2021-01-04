@@ -8,14 +8,23 @@ import (
 )
 
 type Endpoints struct {
+	HealthEndpoint           endpoint.Endpoint
 	GetSCEPCRTsEndpoint      endpoint.Endpoint
 	PutRevokeSCEPCRTEndpoint endpoint.Endpoint
 }
 
 func MakeServerEndpoints(s Service) Endpoints {
 	return Endpoints{
+		HealthEndpoint:           MakeHealthEndpoint(s),
 		GetSCEPCRTsEndpoint:      MakeGetSCEPCRTsEndpoint(s),
 		PutRevokeSCEPCRTEndpoint: MakePutRevokeSCEPCRTEndpoint(s),
+	}
+}
+
+func MakeHealthEndpoint(s Service) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
+		healthy := s.Health(ctx)
+		return healthResponse{Healthy: healthy}, nil
 	}
 }
 
@@ -33,6 +42,13 @@ func MakePutRevokeSCEPCRTEndpoint(s Service) endpoint.Endpoint {
 		err = s.RevokeSCEPCRT(ctx, req.dn, req.serial)
 		return putRevokeSCEPCRTResponse{Err: err}, nil
 	}
+}
+
+type healthRequest struct{}
+
+type healthResponse struct {
+	Healthy bool  `json:"healthy,omitempty"`
+	Err     error `json:"err,omitempty"`
 }
 
 type getSCEPCRTsRequest struct{}

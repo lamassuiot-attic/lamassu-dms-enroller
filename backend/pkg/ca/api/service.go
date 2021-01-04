@@ -8,6 +8,7 @@ import (
 )
 
 type Service interface {
+	Health(ctx context.Context) bool
 	GetCAs(ctx context.Context) (secrets.CAs, error)
 	GetCAInfo(ctx context.Context, CA string) (secrets.CAInfo, error)
 	DeleteCA(ctx context.Context, CA string) error
@@ -32,6 +33,10 @@ func NewCAService(secrets secrets.Secrets) Service {
 	return &caService{
 		secrets: secrets,
 	}
+}
+
+func (s *caService) Health(ctx context.Context) bool {
+	return true
 }
 
 func (s *caService) GetCAs(ctx context.Context) (secrets.CAs, error) {

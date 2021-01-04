@@ -25,6 +25,7 @@ import (
 )
 
 type Service interface {
+	Health(ctx context.Context) bool
 	PostCSR(ctx context.Context, data []byte) (csrmodel.CSR, error)
 	GetPendingCSRs(ctx context.Context) csrmodel.CSRs
 	GetPendingCSRDB(ctx context.Context, id int) (csrmodel.CSR, error)
@@ -78,6 +79,10 @@ func NewEnrollerService(csrDBStore csrstore.DB, csrFileStore csrstore.File, cert
 		secrets:        secrets,
 		homePath:       homePath,
 	}
+}
+
+func (s *enrollerService) Health(ctx context.Context) bool {
+	return true
 }
 
 func (s *enrollerService) PostCSR(ctx context.Context, data []byte) (csrmodel.CSR, error) {
