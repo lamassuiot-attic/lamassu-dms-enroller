@@ -24,11 +24,11 @@ type Config struct {
 	KeyFile  string
 }
 
-func NewConfig(prefix string) (error, Config) {
+func NewConfig(prefix string) (Config, error) {
 	var cfg Config
 	err := envconfig.Process(prefix, &cfg)
 	if err != nil {
-		return err, Config{}
+		return Config{}, err
 	}
-	return nil, cfg
+	return cfg, nil
 }

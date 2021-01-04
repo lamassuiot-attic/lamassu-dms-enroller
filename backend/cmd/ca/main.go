@@ -19,7 +19,7 @@ import (
 )
 
 func main() {
-	err, cfg := configs.NewConfig("ca")
+	cfg, err := configs.NewConfig("ca")
 	if err != nil {
 		panic(err)
 	}
