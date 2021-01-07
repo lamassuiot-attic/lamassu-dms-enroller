@@ -50,11 +50,11 @@ var (
 	ErrInvalidCSR       = errors.New("unable to parse CSR, is invalid") //400
 	ErrInvalidID        = errors.New("invalid CSR ID, does not exist")  //404
 	ErrInvalidIDFormat  = errors.New("invalid ID format")
-	ErrInvalidApprobeOp = errors.New("invalid operation, only pending status CSRs can be approved") //400
-	ErrInvalidRevokeOp  = errors.New("invalid operation, only approved status CSRs can be revoked") //400
-	ErrInvalidDenyOp    = errors.New("invalid operation, only pending status CSRs can be denied")   //400
-	ErrInvalidDeleteOp  = errors.New("invalid operation, only pending status CSRs can be deleted")  //400
-	ErrIncorrectType    = errors.New("unsupported media type")                                      //415
+	ErrInvalidApprobeOp = errors.New("invalid operation, only pending status CSRs can be approved")          //400
+	ErrInvalidRevokeOp  = errors.New("invalid operation, only approved status CSRs can be revoked")          //400
+	ErrInvalidDenyOp    = errors.New("invalid operation, only pending status CSRs can be denied")            //400
+	ErrInvalidDeleteOp  = errors.New("invalid operation, only denied or revoked status CSRs can be deleted") //400
+	ErrIncorrectType    = errors.New("unsupported media type")                                               //415
 	ErrEmptyBody        = errors.New("empty body")
 
 	//Server errors
@@ -327,7 +327,7 @@ func (s *enrollerService) DeleteCSR(ctx context.Context, id int) error {
 		}
 		return ErrGetCSR
 	}
-	if csr.Status == "NEW" {
+	if csr.Status == csrmodel.DeniedStatus || csr.Status == csrmodel.RevokedStatus {
 		err = s.csrDBStore.Delete(id)
 		if err != nil {
 			return ErrDeleteCSR
