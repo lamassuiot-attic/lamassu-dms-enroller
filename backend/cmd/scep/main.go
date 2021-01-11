@@ -4,6 +4,7 @@ import (
 	"enroller/pkg/scep/api"
 	"enroller/pkg/scep/auth"
 	"enroller/pkg/scep/configs"
+	"enroller/pkg/scep/discovery/consul"
 	"enroller/pkg/scep/models/db"
 	"flag"
 	"fmt"
@@ -66,6 +67,11 @@ func main() {
 		)(s)
 	}
 
+	consulsd, err := consul.NewServiceDiscovery(cfg.ConsulProtocol, cfg.ConsulHost, cfg.ConsulPort, logger)
+	if err != nil {
+		panic(err)
+	}
+
 	mux := http.NewServeMux()
 
 	mux.Handle("/v1/", api.MakeHTTPHandler(s, log.With(logger, "component", "HTTPS"), auth))
@@ -81,10 +87,12 @@ func main() {
 
 	go func() {
 		logger.Log("transport", "HTTPS", "addr", "httpAddr")
+		consulsd.Register("https", "scep", cfg.Port)
 		errs <- http.ListenAndServeTLS(*httpAddr, cfg.CertFile, cfg.KeyFile, nil)
 	}()
 
 	logger.Log("exit", <-errs)
+	consulsd.Deregister()
 
 }
 

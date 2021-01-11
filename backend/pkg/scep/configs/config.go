@@ -11,6 +11,10 @@ type Config struct {
 	PostgresPassword string
 	PostgresHostname string
 
+	ConsulProtocol string
+	ConsulHost     string
+	ConsulPort     string
+
 	EnrollerUIHost     string
 	EnrollerUIPort     string
 	EnrollerUIProtocol string

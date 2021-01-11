@@ -4,6 +4,7 @@ import (
 	"enroller/pkg/ca/api"
 	"enroller/pkg/ca/auth"
 	"enroller/pkg/ca/configs"
+	"enroller/pkg/ca/discovery/consul"
 	"enroller/pkg/ca/secrets/vault"
 	"flag"
 	"fmt"
@@ -65,6 +66,11 @@ func main() {
 		)(s)
 	}
 
+	consulsd, err := consul.NewServiceDiscovery(cfg.ConsulProtocol, cfg.ConsulHost, cfg.ConsulPort, logger)
+	if err != nil {
+		panic(err)
+	}
+
 	mux := http.NewServeMux()
 
 	mux.Handle("/v1/", api.MakeHTTPHandler(s, log.With(logger, "component", "HTTPS"), auth))
@@ -80,10 +86,12 @@ func main() {
 
 	go func() {
 		logger.Log("transport", "HTTPS", "addr", "httpsAddr")
+		consulsd.Register("https", "ca", cfg.Port)
 		errs <- http.ListenAndServeTLS(*httpAddr, cfg.CertFile, cfg.KeyFile, nil)
 	}()
 
 	logger.Log("exit", <-errs)
+	consulsd.Deregister()
 
 }
 

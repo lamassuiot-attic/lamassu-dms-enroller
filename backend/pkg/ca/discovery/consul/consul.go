@@ -41,11 +41,11 @@ func (sd *ServiceDiscovery) Register(advProtocol string, advHost string, advPort
 	port, _ := strconv.Atoi(advPort)
 	num := rand.Intn(100)
 	asr := api.AgentServiceRegistration{
-		ID:      "enroller" + strconv.Itoa(num),
-		Name:    "enroller",
+		ID:      "ca" + strconv.Itoa(num),
+		Name:    "ca",
 		Address: advProtocol + "://" + advHost,
 		Port:    port,
-		Tags:    []string{"enroller", "enroller"},
+		Tags:    []string{"enroller", "ca"},
 		Check:   &check,
 	}
 	sd.registrar = consulsd.NewRegistrar(sd.client, &asr, sd.logger)

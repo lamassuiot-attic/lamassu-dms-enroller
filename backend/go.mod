@@ -7,6 +7,7 @@ require (
 	github.com/go-kit/kit v0.10.0
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/gorilla/mux v1.7.4
+	github.com/hashicorp/consul/api v1.4.0
 	github.com/hashicorp/vault v1.6.0
 	github.com/hashicorp/vault/api v1.0.5-0.20201001211907-38d91b749c77
 	github.com/hashicorp/vault/sdk v0.1.14-0.20201109203410-5e6e24692b32

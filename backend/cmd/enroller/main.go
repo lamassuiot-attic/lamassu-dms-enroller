@@ -4,6 +4,7 @@ import (
 	"enroller/pkg/enroller/api"
 	"enroller/pkg/enroller/auth"
 	"enroller/pkg/enroller/configs"
+	"enroller/pkg/enroller/discovery/consul"
 	certsdb "enroller/pkg/enroller/models/certs/store/db"
 	certsfile "enroller/pkg/enroller/models/certs/store/file"
 	csrdb "enroller/pkg/enroller/models/csr/store/db"
@@ -80,6 +81,11 @@ func main() {
 		)(s)
 	}
 
+	consulsd, err := consul.NewServiceDiscovery(cfg.ConsulProtocol, cfg.ConsulHost, cfg.ConsulPort, logger)
+	if err != nil {
+		panic(err)
+	}
+
 	mux := http.NewServeMux()
 
 	mux.Handle("/v1/", api.MakeHTTPHandler(s, log.With(logger, "component", "HTTPS"), auth))
@@ -95,10 +101,12 @@ func main() {
 
 	go func() {
 		logger.Log("transport", "HTTPS", "addr", "httpsAddr")
+		consulsd.Register("https", "enroller", cfg.Port)
 		errs <- http.ListenAndServeTLS(*httpAddr, cfg.CertFile, cfg.KeyFile, nil)
 	}()
 
 	logger.Log("exit", <-errs)
+	consulsd.Deregister()
 
 }
 

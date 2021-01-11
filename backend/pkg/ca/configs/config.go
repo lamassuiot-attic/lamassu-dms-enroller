@@ -9,6 +9,10 @@ type Config struct {
 	EnrollerUIPort     string
 	EnrollerUIProtocol string
 
+	ConsulProtocol string
+	ConsulHost     string
+	ConsulPort     string
+
 	KeycloakHostname string
 	KeycloakPort     string
 	KeycloakProtocol string
