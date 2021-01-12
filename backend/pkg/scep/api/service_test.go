@@ -7,8 +7,11 @@ import (
 	"enroller/pkg/scep/models/db"
 	"fmt"
 	"math/big"
+	"os"
 	"testing"
 	"time"
+
+	"github.com/go-kit/kit/log"
 )
 
 type serviceSetUp struct {
@@ -99,20 +102,26 @@ func TestRevokeSCEPCRT(t *testing.T) {
 }
 
 func setup() *serviceSetUp {
+	var logger log.Logger
+	{
+		logger = log.NewLogfmtLogger(os.Stderr)
+		logger = log.With(logger, "ts", log.DefaultTimestampUTC)
+		logger = log.With(logger, "caller", log.DefaultCaller)
+	}
 	err, cfg := configs.NewConfig("sceptest")
 	if err != nil {
 		panic(err)
 	}
 	connStr := "dbname=" + cfg.PostgresDB + " user=" + cfg.PostgresUser + " password=" + cfg.PostgresPassword + " host=" + cfg.PostgresHostname + " port=" + cfg.PostgresPort + " sslmode=disable"
-	scepDB, err := setupSCEPDB(connStr)
+	scepDB, err := setupSCEPDB(connStr, logger)
 	if err != nil {
 		panic(err)
 	}
 	return &serviceSetUp{scepDB}
 }
 
-func setupSCEPDB(connStr string) (db.DBSCEPStore, error) {
-	db, err := db.NewDB("postgres", connStr)
+func setupSCEPDB(connStr string, logger log.Logger) (db.DBSCEPStore, error) {
+	db, err := db.NewDB("postgres", connStr, logger)
 	if err != nil {
 		return nil, err
 	}

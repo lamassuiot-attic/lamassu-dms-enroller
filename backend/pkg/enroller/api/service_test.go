@@ -21,11 +21,13 @@ import (
 	"enroller/pkg/enroller/secrets"
 	secretsfile "enroller/pkg/enroller/secrets/file"
 	"fmt"
+	"os"
 	"regexp"
 	"strings"
 	"testing"
 
 	"github.com/go-kit/kit/auth/jwt"
+	"github.com/go-kit/kit/log"
 )
 
 type serviceSetUp struct {
@@ -436,51 +438,57 @@ func TestDelete(t *testing.T) {
 }
 
 func setup() *serviceSetUp {
+	var logger log.Logger
+	{
+		logger = log.NewLogfmtLogger(os.Stderr)
+		logger = log.With(logger, "ts", log.DefaultTimestampUTC)
+		logger = log.With(logger, "caller", log.DefaultCaller)
+	}
 	err, cfg := configs.NewConfig("enrollertest")
 	if err != nil {
 		panic(err)
 	}
 	connStr := "dbname=" + cfg.PostgresDB + " user=" + cfg.PostgresUser + " password=" + cfg.PostgresPassword + " host=" + cfg.PostgresHostname + " port=" + cfg.PostgresPort + " sslmode=disable"
-	csrdb, err := setupCSRDB(connStr)
+	csrdb, err := setupCSRDB(connStr, logger)
 	if err != nil {
 		panic(err)
 	}
-	certdb, err := setupCertDB(connStr)
+	certdb, err := setupCertDB(connStr, logger)
 	if err != nil {
 		panic(err)
 	}
-	csrfile := setupCSRFile(cfg.HomePath)
-	certfile := setupCertFile(cfg.HomePath)
-	secrets := setupSecrets(cfg.CACertFile, cfg.CAKeyFile, cfg.OCSPServer, certdb)
+	csrfile := setupCSRFile(cfg.HomePath, logger)
+	certfile := setupCertFile(cfg.HomePath, logger)
+	secrets := setupSecrets(cfg.CACertFile, cfg.CAKeyFile, cfg.OCSPServer, certdb, logger)
 	return &serviceSetUp{csrdb, csrfile, certdb, certfile, secrets, cfg.HomePath}
 }
 
-func setupCSRDB(connStr string) (csrstore.DB, error) {
-	db, err := csrdb.NewDB("postgres", connStr)
+func setupCSRDB(connStr string, logger log.Logger) (csrstore.DB, error) {
+	db, err := csrdb.NewDB("postgres", connStr, logger)
 	if err != nil {
 		return nil, err
 	}
 	return db, nil
 }
 
-func setupCertDB(connStr string) (certstore.DB, error) {
-	db, err := certsdb.NewDB("postgres", connStr)
+func setupCertDB(connStr string, logger log.Logger) (certstore.DB, error) {
+	db, err := certsdb.NewDB("postgres", connStr, logger)
 	if err != nil {
 		return nil, err
 	}
 	return db, nil
 }
 
-func setupCSRFile(path string) csrstore.File {
-	return csrfile.NewFile(path)
+func setupCSRFile(path string, logger log.Logger) csrstore.File {
+	return csrfile.NewFile(path, logger)
 }
 
-func setupCertFile(path string) certstore.File {
-	return certsfile.NewFile(path)
+func setupCertFile(path string, logger log.Logger) certstore.File {
+	return certsfile.NewFile(path, logger)
 }
 
-func setupSecrets(CACertFile string, CAKeyFile string, OCSPServer string, certsdb certstore.DB) secrets.Secrets {
-	return secretsfile.NewFile(CACertFile, CAKeyFile, OCSPServer, certsdb)
+func setupSecrets(CACertFile string, CAKeyFile string, OCSPServer string, certsdb certstore.DB, logger log.Logger) secrets.Secrets {
+	return secretsfile.NewFile(CACertFile, CAKeyFile, OCSPServer, certsdb, logger)
 }
 
 func testCSR() []byte {

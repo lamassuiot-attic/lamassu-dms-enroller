@@ -10,7 +10,6 @@ import (
 	csrdb "enroller/pkg/enroller/models/csr/store/db"
 	csrfile "enroller/pkg/enroller/models/csr/store/file"
 	secrets "enroller/pkg/enroller/secrets/file"
-	"flag"
 	"fmt"
 	"net/http"
 	"os"
@@ -24,40 +23,38 @@ import (
 )
 
 func main() {
-	err, cfg := configs.NewConfig("enroller")
-	if err != nil {
-		panic(err)
-	}
-
-	csrConnStr := "dbname=" + cfg.PostgresDB + " user=" + cfg.PostgresUser + " password=" + cfg.PostgresPassword + " host=" + cfg.PostgresHostname + " port=" + cfg.PostgresPort + " sslmode=disable"
-	csrdb, err := csrdb.NewDB("postgres", csrConnStr)
-	if err != nil {
-		panic(err)
-	}
-	csrfile := csrfile.NewFile(cfg.HomePath)
-
-	certsConnStr := "dbname=" + cfg.PostgresDB + " user=" + cfg.PostgresUser + " password=" + cfg.PostgresPassword + " host=" + cfg.PostgresHostname + " port=" + cfg.PostgresPort + " sslmode=disable"
-	certsdb, err := certsdb.NewDB("postgres", certsConnStr)
-	if err != nil {
-		panic(err)
-	}
-	certsfile := certsfile.NewFile(cfg.HomePath)
-
-	auth := auth.NewAuth(cfg.KeycloakHostname, cfg.KeycloakPort, cfg.KeycloakProtocol, cfg.KeycloakRealm, cfg.KeycloakCA)
-
-	secrets := secrets.NewFile(cfg.CACertFile, cfg.CAKeyFile, cfg.OCSPServer, certsdb)
-
-	var (
-		httpAddr = flag.String("http.addr", ":"+cfg.Port, "HTTPS listen address")
-	)
-	flag.Parse()
-
 	var logger log.Logger
 	{
 		logger = log.NewLogfmtLogger(os.Stderr)
 		logger = log.With(logger, "ts", log.DefaultTimestampUTC)
 		logger = log.With(logger, "caller", log.DefaultCaller)
 	}
+
+	err, cfg := configs.NewConfig("enroller")
+	if err != nil {
+		logger.Log("err", err, "msg", "Could not read environment configuration values")
+		os.Exit(1)
+	}
+
+	csrConnStr := "dbname=" + cfg.PostgresDB + " user=" + cfg.PostgresUser + " password=" + cfg.PostgresPassword + " host=" + cfg.PostgresHostname + " port=" + cfg.PostgresPort + " sslmode=disable"
+	csrdb, err := csrdb.NewDB("postgres", csrConnStr, logger)
+	if err != nil {
+		logger.Log("err", err, "msg", "Could not start connection with CSRs database")
+		os.Exit(1)
+	}
+	csrfile := csrfile.NewFile(cfg.HomePath, logger)
+
+	certsConnStr := "dbname=" + cfg.PostgresDB + " user=" + cfg.PostgresUser + " password=" + cfg.PostgresPassword + " host=" + cfg.PostgresHostname + " port=" + cfg.PostgresPort + " sslmode=disable"
+	certsdb, err := certsdb.NewDB("postgres", certsConnStr, logger)
+	if err != nil {
+		logger.Log("err", err, "msg", "Could not start connection with signed certificates database")
+		os.Exit(1)
+	}
+	certsfile := certsfile.NewFile(cfg.HomePath, logger)
+
+	auth := auth.NewAuth(cfg.KeycloakHostname, cfg.KeycloakPort, cfg.KeycloakProtocol, cfg.KeycloakRealm, cfg.KeycloakCA)
+
+	secrets := secrets.NewFile(cfg.CACertFile, cfg.CAKeyFile, cfg.OCSPServer, certsdb, logger)
 
 	fieldKeys := []string{"method"}
 
@@ -83,7 +80,8 @@ func main() {
 
 	consulsd, err := consul.NewServiceDiscovery(cfg.ConsulProtocol, cfg.ConsulHost, cfg.ConsulPort, logger)
 	if err != nil {
-		panic(err)
+		logger.Log("err", err, "msg", "Could not start connection with Consul Service Discovery")
+		os.Exit(1)
 	}
 
 	mux := http.NewServeMux()
@@ -100,9 +98,9 @@ func main() {
 	}()
 
 	go func() {
-		logger.Log("transport", "HTTPS", "addr", "httpsAddr")
+		logger.Log("transport", "HTTPS", "addrress", cfg.Port, "msg", "listening")
 		consulsd.Register("https", "enroller", cfg.Port)
-		errs <- http.ListenAndServeTLS(*httpAddr, cfg.CertFile, cfg.KeyFile, nil)
+		errs <- http.ListenAndServeTLS(":"+cfg.Port, cfg.CertFile, cfg.KeyFile, nil)
 	}()
 
 	logger.Log("exit", <-errs)

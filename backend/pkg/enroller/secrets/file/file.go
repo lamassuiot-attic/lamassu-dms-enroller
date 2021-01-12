@@ -10,6 +10,8 @@ import (
 	"enroller/pkg/enroller/secrets"
 	"io/ioutil"
 	"time"
+
+	"github.com/go-kit/kit/log"
 )
 
 type File struct {
@@ -17,23 +19,27 @@ type File struct {
 	CAKey        string
 	OCSPServer   string
 	certsDBStore certstore.DB
+	logger       log.Logger
 }
 
-func NewFile(CACert string, CAKey string, OCSPServer string, certsDBStore certstore.DB) secrets.Secrets {
-	return &File{CACert: CACert, CAKey: CAKey, OCSPServer: OCSPServer, certsDBStore: certsDBStore}
+func NewFile(CACert string, CAKey string, OCSPServer string, certsDBStore certstore.DB, logger log.Logger) secrets.Secrets {
+	return &File{CACert: CACert, CAKey: CAKey, OCSPServer: OCSPServer, certsDBStore: certsDBStore, logger: logger}
 }
 
 func (f *File) SignCSR(csr *x509.CertificateRequest) ([]byte, error) {
 	caCert, err := loadCACert(f.CACert)
 	if err != nil {
+		f.logger.Log("err", err, "msg", "Could not load CA certificate")
 		return nil, err
 	}
 	caKey, err := loadCAKey(f.CAKey)
 	if err != nil {
+		f.logger.Log("err", err, "msg", "Could not load CA key")
 		return nil, err
 	}
 	serial, err := f.certsDBStore.Serial()
 	if err != nil {
+		f.logger.Log("err", err, "msg", "Could not get serial from database")
 		return nil, err
 	}
 	template := &x509.Certificate{
@@ -51,6 +57,7 @@ func (f *File) SignCSR(csr *x509.CertificateRequest) ([]byte, error) {
 
 	cert, err := x509.CreateCertificate(rand.Reader, template, caCert, csr.PublicKey, caKey)
 	if err != nil {
+		f.logger.Log("err", err, "msg", "Could not create signed certificate")
 		return nil, err
 	}
 	return cert, nil

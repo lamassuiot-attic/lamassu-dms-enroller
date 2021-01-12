@@ -8,6 +8,8 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/go-kit/kit/log"
+
 	"enroller/pkg/ca/secrets"
 
 	"github.com/hashicorp/vault/api"
@@ -17,23 +19,26 @@ type vaultSecrets struct {
 	client   *api.Client
 	roleID   string
 	secretID string
+	logger   log.Logger
 }
 
-func NewVaultSecrets(address string, roleID string, secretID string, CA string) (*vaultSecrets, error) {
+func NewVaultSecrets(address string, roleID string, secretID string, CA string, logger log.Logger) (*vaultSecrets, error) {
 	conf := api.DefaultConfig()
 	conf.Address = strings.ReplaceAll(conf.Address, "https://127.0.0.1:8200", address)
 	tlsConf := &api.TLSConfig{CACert: CA}
 	conf.ConfigureTLS(tlsConf)
 	client, err := api.NewClient(conf)
 	if err != nil {
+		logger.Log("err", err, "msg", "Could not create Vault API client")
 		return nil, err
 	}
 
 	err = Login(client, roleID, secretID)
 	if err != nil {
+		logger.Log("err", err, "msg", "Could not login into Vault")
 		return nil, err
 	}
-	return &vaultSecrets{client: client, roleID: roleID, secretID: secretID}, nil
+	return &vaultSecrets{client: client, roleID: roleID, secretID: secretID, logger: logger}, nil
 }
 
 func Login(client *api.Client, roleID string, secretID string) error {
@@ -53,6 +58,7 @@ func Login(client *api.Client, roleID string, secretID string) error {
 func (vs *vaultSecrets) GetCAs() (secrets.CAs, error) {
 	resp, err := vs.client.Sys().ListMounts()
 	if err != nil {
+		vs.logger.Log("err", err, "msg", "Could not obtain list of Vault mounts")
 		return secrets.CAs{}, err
 	}
 	var CAs []secrets.CA
@@ -68,17 +74,21 @@ func (vs *vaultSecrets) GetCAInfo(CA string) (secrets.CAInfo, error) {
 	caPath := CA + "/cert/ca"
 	resp, err := vs.client.Logical().Read(caPath)
 	if err != nil {
+		vs.logger.Log("err", err, "msg", "Could not read CA certificate from Vault")
 		return secrets.CAInfo{}, err
 	}
 	pemBlock, _ := pem.Decode([]byte(resp.Data["certificate"].(string)))
 	if pemBlock == nil {
+		vs.logger.Log("err", "Cannot find the next PEM formatted block")
 		return secrets.CAInfo{}, errors.New("cannot find the next PEM formatted block")
 	}
 	if pemBlock.Type != "CERTIFICATE" || len(pemBlock.Headers) != 0 {
+		vs.logger.Log("err", "Unmatched type of headers")
 		return secrets.CAInfo{}, errors.New("unmatched type of headers")
 	}
 	caCert, err := x509.ParseCertificate(pemBlock.Bytes)
 	if err != nil {
+		vs.logger.Log("err", err, "msg", "Could not parse CA certificate")
 		return secrets.CAInfo{}, err
 	}
 	key := caCert.PublicKeyAlgorithm.String()
@@ -108,6 +118,7 @@ func (vs *vaultSecrets) DeleteCA(CA string) error {
 	deletePath := CA + "/root"
 	_, err := vs.client.Logical().Delete(deletePath)
 	if err != nil {
+		vs.logger.Log("err", err, "msg", "Could not delete CA certificate from Vault")
 		return err
 	}
 	return nil

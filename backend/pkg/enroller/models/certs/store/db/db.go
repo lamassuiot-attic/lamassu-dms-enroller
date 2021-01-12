@@ -6,25 +6,30 @@ import (
 	"enroller/pkg/enroller/models/certs/store"
 	"errors"
 	"fmt"
+
+	"github.com/go-kit/kit/log"
+
 	"math/big"
 )
 
-func NewDB(driverName string, dataSourceName string) (store.DB, error) {
+func NewDB(driverName string, dataSourceName string, logger log.Logger) (store.DB, error) {
 	db, err := sql.Open(driverName, dataSourceName)
 	if err != nil {
+		logger.Log("err", err, "msg", "Could not open connection with signed certificates database")
 		return nil, err
 	}
 	err = checkDBAlive(db)
 	for err != nil {
-		fmt.Println("Trying to connect to DB")
+		logger.Log("info", "msg", "Trying to connect with signed certificates database")
 		err = checkDBAlive(db)
 	}
 
-	return &DB{db}, nil
+	return &DB{db, logger}, nil
 }
 
 type DB struct {
 	*sql.DB
+	logger log.Logger
 }
 
 func checkDBAlive(db *sql.DB) error {
@@ -46,6 +51,7 @@ func (db *DB) Insert(crt certs.CRT) error {
 
 	err := db.QueryRow(sqlStatement, crt.ID, crt.Status, crt.ExpirationDate, crt.RevocationDate, serialHex, crt.DN, crt.CertPath).Scan(&serial)
 	if err != nil {
+		db.logger.Log("err", err, "msg", "Could not insert certificate in database")
 		return err
 	}
 	return nil
@@ -81,16 +87,19 @@ func (db *DB) Revoke(id int, revocationDate string) error {
 
 	res, err := db.Exec(sqlStatement, revocationDate, id)
 	if err != nil {
+		db.logger.Log("err", err, "msg", "Could not revoke certificate in database")
 		return err
 	}
 
 	rowsAffected, err := res.RowsAffected()
 	if err != nil {
+		db.logger.Log("err", err, "msg", "Could not update certificate in database")
 		return err
 	}
 
 	if rowsAffected <= 0 {
-		return errors.New("No rows updated")
+		db.logger.Log("err", "No rows have been updated in database")
+		return errors.New("No rows have been updated in database")
 	}
 	return nil
 }
@@ -102,14 +111,17 @@ func (db *DB) Delete(id int) error {
 	`
 	res, err := db.Exec(sqlStatement, id)
 	if err != nil {
+		db.logger.Log("err", err, "msg", "Could not delete certificate from database")
 		return err
 	}
 	count, err := res.RowsAffected()
 	if err != nil {
+		db.logger.Log("err", err, "msg", "Could not update certificate in database")
 		return err
 	}
 	if count <= 0 {
-		return errors.New("No updates")
+		db.logger.Log("err", "No rows have been updated in database")
+		return errors.New("No rows have been updated in database")
 	}
 	return nil
 }

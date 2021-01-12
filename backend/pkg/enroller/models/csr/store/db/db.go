@@ -7,10 +7,12 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/go-kit/kit/log"
+
 	_ "github.com/lib/pq"
 )
 
-func NewDB(driverName string, dataSourceName string) (store.DB, error) {
+func NewDB(driverName string, dataSourceName string, logger log.Logger) (store.DB, error) {
 	db, err := sql.Open(driverName, dataSourceName)
 	if err != nil {
 		return nil, err
@@ -21,11 +23,12 @@ func NewDB(driverName string, dataSourceName string) (store.DB, error) {
 		err = checkDBAlive(db)
 	}
 
-	return &DB{db}, nil
+	return &DB{db, logger}, nil
 }
 
 type DB struct {
 	*sql.DB
+	logger log.Logger
 }
 
 func checkDBAlive(db *sql.DB) error {
@@ -44,6 +47,7 @@ func (db *DB) Insert(c csr.CSR) (int, error) {
 	`
 	err := db.QueryRow(sqlStatement, c.CountryName, c.StateOrProvinceName, c.LocalityName, c.OrganizationName, c.OrganizationalUnitName, c.EmailAddress, c.CommonName, c.Status, c.CsrFilePath).Scan(&id)
 	if err != nil {
+		db.logger.Log("err", err, "Could not insert CSR in database")
 		return -1, err
 	}
 	return id, nil
@@ -56,6 +60,7 @@ func (db *DB) SelectAll() csr.CSRs {
 	`
 	rows, err := db.Query(sqlStatement)
 	if err != nil {
+		db.logger.Log("err", err, "msg", "Could not obtain CSRs from database or its empty")
 		return csr.CSRs{CSRs: []csr.CSR{}}
 	}
 	defer rows.Close()
@@ -65,11 +70,13 @@ func (db *DB) SelectAll() csr.CSRs {
 		var c csr.CSR
 		err := rows.Scan(&c.Id, &c.CountryName, &c.StateOrProvinceName, &c.LocalityName, &c.OrganizationName, &c.OrganizationalUnitName, &c.CommonName, &c.EmailAddress, &c.Status, &c.CsrFilePath)
 		if err != nil {
+			db.logger.Log("err", err, "msg", "Unable to read database CSR row")
 			return csr.CSRs{CSRs: []csr.CSR{}}
 		}
 		csrs = append(csrs, c)
 	}
 	if err = rows.Err(); err != nil {
+		db.logger.Log("err", err)
 		return csr.CSRs{CSRs: []csr.CSR{}}
 	}
 	return csr.CSRs{CSRs: csrs}
@@ -84,6 +91,7 @@ func (db *DB) SelectAllByCN(cn string) csr.CSRs {
 
 	rows, err := db.Query(sqlStatement, cn)
 	if err != nil {
+		db.logger.Log("err", err, "msg", "Could not obtain CSR from database")
 		return csr.CSRs{CSRs: []csr.CSR{}}
 	}
 	defer rows.Close()
@@ -93,11 +101,13 @@ func (db *DB) SelectAllByCN(cn string) csr.CSRs {
 		var c csr.CSR
 		err := rows.Scan(&c.Id, &c.CountryName, &c.StateOrProvinceName, &c.LocalityName, &c.OrganizationName, &c.OrganizationalUnitName, &c.CommonName, &c.EmailAddress, &c.Status, &c.CsrFilePath)
 		if err != nil {
+			db.logger.Log("err", err, "msg", "Unable to read database CSR row")
 			return csr.CSRs{CSRs: []csr.CSR{}}
 		}
 		csrs = append(csrs, c)
 	}
 	if err = rows.Err(); err != nil {
+		db.logger.Log("err", err)
 		return csr.CSRs{CSRs: []csr.CSR{}}
 	}
 	return csr.CSRs{CSRs: csrs}
@@ -110,6 +120,7 @@ func (db *DB) SelectByStatus(status string) csr.CSRs {
 	`
 	rows, err := db.Query(sqlStatement)
 	if err != nil {
+		db.logger.Log("err", err, "msg", "Could not obtain CSR from database")
 		return csr.CSRs{CSRs: []csr.CSR{}}
 	}
 	defer rows.Close()
@@ -119,11 +130,13 @@ func (db *DB) SelectByStatus(status string) csr.CSRs {
 		var c csr.CSR
 		err := rows.Scan(&c.Id, &c.CountryName, &c.StateOrProvinceName, &c.LocalityName, &c.OrganizationName, &c.OrganizationalUnitName, &c.CommonName, &c.EmailAddress, &c.Status, &c.CsrFilePath)
 		if err != nil {
+			db.logger.Log("err", err, "msg", "Unable to read database CSR row")
 			return csr.CSRs{CSRs: []csr.CSR{}}
 		}
 		csrs = append(csrs, c)
 	}
 	if err = rows.Err(); err != nil {
+		db.logger.Log("err", err)
 		return csr.CSRs{CSRs: []csr.CSR{}}
 	}
 	return csr.CSRs{CSRs: csrs}
@@ -139,6 +152,7 @@ func (db *DB) SelectByID(id int) (csr.CSR, error) {
 	var c csr.CSR
 	err := row.Scan(&c.Id, &c.CountryName, &c.StateOrProvinceName, &c.LocalityName, &c.OrganizationName, &c.OrganizationalUnitName, &c.CommonName, &c.EmailAddress, &c.Status, &c.CsrFilePath)
 	if err != nil {
+		db.logger.Log("err", err, "msg", "Unable to read database CSR row")
 		return csr.CSR{}, err
 	}
 	return c, nil
@@ -152,14 +166,17 @@ func (db *DB) UpdateByID(id int, c csr.CSR) (csr.CSR, error) {
 	`
 	res, err := db.Exec(sqlStatement, c.Status, id)
 	if err != nil {
+		db.logger.Log("err", err, "msg", "Could not update CSR in database")
 		return csr.CSR{}, err
 	}
 	count, err := res.RowsAffected()
 	if err != nil {
+		db.logger.Log("err", err, "msg", "Could not update CSR in database")
 		return csr.CSR{}, err
 	}
 	if count <= 0 {
-		return csr.CSR{}, errors.New("No rows updated")
+		db.logger.Log("err", "No rows have been updated in database")
+		return csr.CSR{}, errors.New("No rows have been updated in database")
 	}
 	return csr.CSR{}, nil
 }
@@ -172,14 +189,17 @@ func (db *DB) UpdateFilePath(c csr.CSR) error {
 	`
 	res, err := db.Exec(sqlStatement, c.CsrFilePath, c.Id)
 	if err != nil {
+		db.logger.Log("err", err, "msg", "Could not update CSR file path in database")
 		return err
 	}
 	count, err := res.RowsAffected()
 	if err != nil {
+		db.logger.Log("err", err, "msg", "Could not update CSR file path in database")
 		return err
 	}
 	if count <= 0 {
-		return errors.New("No rows updated")
+		db.logger.Log("err", "No rows have been updated in database")
+		return errors.New("No rows have been updated in database")
 	}
 	return nil
 }
@@ -191,14 +211,17 @@ func (db *DB) Delete(id int) error {
 	`
 	res, err := db.Exec(sqlStatement, id)
 	if err != nil {
+		db.logger.Log("err", err, "msg", "Could not delete CSR from database")
 		return err
 	}
 	count, err := res.RowsAffected()
 	if err != nil {
+		db.logger.Log("err", err, "msg", "Could not update CSR in database")
 		return err
 	}
 	if count <= 0 {
-		return errors.New("No updates")
+		db.logger.Log("err", "No rows have been updated in database")
+		return errors.New("No rows have been updated in database")
 	}
 	return nil
 }

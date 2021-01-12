@@ -6,7 +6,6 @@ import (
 	"enroller/pkg/ca/configs"
 	"enroller/pkg/ca/discovery/consul"
 	"enroller/pkg/ca/secrets/vault"
-	"flag"
 	"fmt"
 	"net/http"
 	"os"
@@ -20,28 +19,24 @@ import (
 )
 
 func main() {
-	cfg, err := configs.NewConfig("ca")
-	if err != nil {
-		panic(err)
-	}
-
-	auth := auth.NewAuth(cfg.KeycloakHostname, cfg.KeycloakPort, cfg.KeycloakProtocol, cfg.KeycloakRealm, cfg.KeycloakCA)
-	secrets, err := vault.NewVaultSecrets(cfg.VaultAddress, cfg.VaultRoleID, cfg.VaultSecretID, cfg.VaultCA)
-
-	if err != nil {
-		panic(err)
-	}
-
-	var (
-		httpAddr = flag.String("http.addr", ":"+cfg.Port, "HTTPS listen address")
-	)
-	flag.Parse()
-
 	var logger log.Logger
 	{
 		logger = log.NewLogfmtLogger(os.Stderr)
 		logger = log.With(logger, "ts", log.DefaultTimestampUTC)
 		logger = log.With(logger, "caller", log.DefaultCaller)
+	}
+
+	cfg, err := configs.NewConfig("ca")
+	if err != nil {
+		logger.Log("err", err, "msg", "Could not read environment configuration values")
+		os.Exit(1)
+	}
+
+	auth := auth.NewAuth(cfg.KeycloakHostname, cfg.KeycloakPort, cfg.KeycloakProtocol, cfg.KeycloakRealm, cfg.KeycloakCA)
+	secrets, err := vault.NewVaultSecrets(cfg.VaultAddress, cfg.VaultRoleID, cfg.VaultSecretID, cfg.VaultCA, logger)
+	if err != nil {
+		logger.Log("err", err, "msg", "Could not start connection with Vault secret engine")
+		os.Exit(1)
 	}
 
 	fieldKeys := []string{"method"}
@@ -68,7 +63,8 @@ func main() {
 
 	consulsd, err := consul.NewServiceDiscovery(cfg.ConsulProtocol, cfg.ConsulHost, cfg.ConsulPort, logger)
 	if err != nil {
-		panic(err)
+		logger.Log("err", err, "msg", "Could not start connection with Consul Service Discovery")
+		os.Exit(1)
 	}
 
 	mux := http.NewServeMux()
@@ -87,7 +83,7 @@ func main() {
 	go func() {
 		logger.Log("transport", "HTTPS", "addr", "httpsAddr")
 		consulsd.Register("https", "ca", cfg.Port)
-		errs <- http.ListenAndServeTLS(*httpAddr, cfg.CertFile, cfg.KeyFile, nil)
+		errs <- http.ListenAndServeTLS(":"+cfg.Port, cfg.CertFile, cfg.KeyFile, nil)
 	}()
 
 	logger.Log("exit", <-errs)

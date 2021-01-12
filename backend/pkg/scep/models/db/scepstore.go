@@ -7,10 +7,12 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/go-kit/kit/log"
+
 	_ "github.com/lib/pq"
 )
 
-func NewDB(driverName string, dataSourceName string) (*DB, error) {
+func NewDB(driverName string, dataSourceName string, logger log.Logger) (*DB, error) {
 	db, err := sql.Open(driverName, dataSourceName)
 	if err != nil {
 		return nil, err
@@ -21,11 +23,12 @@ func NewDB(driverName string, dataSourceName string) (*DB, error) {
 		err = checkDBAlive(db)
 	}
 
-	return &DB{db}, nil
+	return &DB{db, logger}, nil
 }
 
 type DB struct {
 	*sql.DB
+	logger log.Logger
 }
 
 func checkDBAlive(db *sql.DB) error {
@@ -47,6 +50,7 @@ func (db *DB) InsertCRT(crt crypto.CRT) error {
 
 	err := db.QueryRow(sqlStatement, crt.Status, crt.ExpirationDate, crt.RevocationDate, serialHex, crt.DN, crt.CRTPath, crt.Key, crt.KeySize).Scan(&serial)
 	if err != nil {
+		db.logger.Log("err", err, "msg", "Could not insert certificate in database")
 		return err
 	}
 	return nil
@@ -64,6 +68,7 @@ func (db *DB) SelectCRT(dn string, serial string) (crypto.CRT, error) {
 	var crt crypto.CRT
 	err := row.Scan(&crt.Status, &crt.ExpirationDate, &crt.RevocationDate, &crt.Serial, &crt.DN, &crt.CRTPath, &crt.Key, &crt.KeySize)
 	if err != nil {
+		db.logger.Log("err", err, "msg", "Could not obtain certificate from database")
 		return crypto.CRT{}, err
 	}
 	return crt, nil
@@ -78,6 +83,7 @@ func (db *DB) GetCRTs() (crypto.CRTs, error) {
 	rows, err := db.Query(sqlStatement)
 
 	if err != nil {
+		db.logger.Log("err", err, "msg", "Could not obtain certificates from database or its empty")
 		return crypto.CRTs{CRTs: []crypto.CRT{}}, err
 	}
 
@@ -88,12 +94,14 @@ func (db *DB) GetCRTs() (crypto.CRTs, error) {
 		var crt crypto.CRT
 		err := rows.Scan(&crt.Status, &crt.ExpirationDate, &crt.RevocationDate, &crt.Serial, &crt.DN, &crt.CRTPath, &crt.Key, &crt.KeySize)
 		if err != nil {
+			db.logger.Log("err", err, "msg", "Unable to read database certificate row")
 			return crypto.CRTs{CRTs: []crypto.CRT{}}, err
 		}
 		crts = append(crts, crt)
 	}
 
 	if err = rows.Err(); err != nil {
+		db.logger.Log("err", err)
 		return crypto.CRTs{CRTs: []crypto.CRT{}}, err
 	}
 
@@ -110,15 +118,18 @@ func (db *DB) RevokeCRT(dn string, serial string) error {
 	`
 	res, err := db.Exec(sqlStatement, makeOpenSSLTime(time.Now()), dn, serialHex)
 	if err != nil {
+		db.logger.Log("err", err, "msg", "Could not revoke certificate in database")
 		return err
 	}
 	count, err := res.RowsAffected()
 	if err != nil {
+		db.logger.Log("err", err, "msg", "Could not update certificate in database")
 		return err
 	}
 
 	if count <= 0 {
-		return errors.New("No rows updated")
+		db.logger.Log("err", "No rows have been updated in database")
+		return errors.New("No rows have been updated in database")
 	}
 
 	return nil
@@ -132,14 +143,17 @@ func (db *DB) Delete(dn string, serial string) error {
 	serialHex := fmt.Sprintf("%x", serial)
 	res, err := db.Exec(sqlStatement, dn, serialHex)
 	if err != nil {
+		db.logger.Log("err", err, "msg", "Could not delete certificate from database")
 		return err
 	}
 	count, err := res.RowsAffected()
 	if err != nil {
+		db.logger.Log("err", err, "msg", "Could not update certificate in database")
 		return err
 	}
 	if count <= 0 {
-		return errors.New("No updates")
+		db.logger.Log("err", "No rows have been updated in database")
+		return errors.New("No rows have been updated in database")
 	}
 	return nil
 }
