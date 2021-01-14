@@ -6,9 +6,11 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
+	"strconv"
 	"strings"
 
 	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/log/level"
 
 	"enroller/pkg/ca/secrets"
 
@@ -29,13 +31,13 @@ func NewVaultSecrets(address string, roleID string, secretID string, CA string, 
 	conf.ConfigureTLS(tlsConf)
 	client, err := api.NewClient(conf)
 	if err != nil {
-		logger.Log("err", err, "msg", "Could not create Vault API client")
+		level.Error(logger).Log("err", err, "msg", "Could not create Vault API client")
 		return nil, err
 	}
 
 	err = Login(client, roleID, secretID)
 	if err != nil {
-		logger.Log("err", err, "msg", "Could not login into Vault")
+		level.Error(logger).Log("err", err, "msg", "Could not login into Vault")
 		return nil, err
 	}
 	return &vaultSecrets{client: client, roleID: roleID, secretID: secretID, logger: logger}, nil
@@ -58,7 +60,7 @@ func Login(client *api.Client, roleID string, secretID string) error {
 func (vs *vaultSecrets) GetCAs() (secrets.CAs, error) {
 	resp, err := vs.client.Sys().ListMounts()
 	if err != nil {
-		vs.logger.Log("err", err, "msg", "Could not obtain list of Vault mounts")
+		level.Error(vs.logger).Log("err", err, "msg", "Could not obtain list of Vault mounts")
 		return secrets.CAs{}, err
 	}
 	var CAs []secrets.CA
@@ -67,6 +69,7 @@ func (vs *vaultSecrets) GetCAs() (secrets.CAs, error) {
 			CAs = append(CAs, secrets.CA{Name: strings.TrimSuffix(mount, "/")})
 		}
 	}
+	level.Info(vs.logger).Log("msg", strconv.Itoa(len(CAs))+" obtained from Vault mounts")
 	return secrets.CAs{CAs: CAs}, nil
 }
 
@@ -74,21 +77,23 @@ func (vs *vaultSecrets) GetCAInfo(CA string) (secrets.CAInfo, error) {
 	caPath := CA + "/cert/ca"
 	resp, err := vs.client.Logical().Read(caPath)
 	if err != nil {
-		vs.logger.Log("err", err, "msg", "Could not read CA certificate from Vault")
+		level.Error(vs.logger).Log("err", err, "msg", "Could not read "+CA+" certificate from Vault")
 		return secrets.CAInfo{}, err
 	}
 	pemBlock, _ := pem.Decode([]byte(resp.Data["certificate"].(string)))
 	if pemBlock == nil {
-		vs.logger.Log("err", "Cannot find the next PEM formatted block")
-		return secrets.CAInfo{}, errors.New("cannot find the next PEM formatted block")
+		err = errors.New("Cannot find the next formatted block")
+		level.Error(vs.logger).Log("err", err)
+		return secrets.CAInfo{}, err
 	}
 	if pemBlock.Type != "CERTIFICATE" || len(pemBlock.Headers) != 0 {
-		vs.logger.Log("err", "Unmatched type of headers")
-		return secrets.CAInfo{}, errors.New("unmatched type of headers")
+		err = errors.New("Unmatched type of headers")
+		level.Error(vs.logger).Log("err", err)
+		return secrets.CAInfo{}, err
 	}
 	caCert, err := x509.ParseCertificate(pemBlock.Bytes)
 	if err != nil {
-		vs.logger.Log("err", err, "msg", "Could not parse CA certificate")
+		level.Error(vs.logger).Log("err", err, "msg", "Could not parse "+CA+" CA certificate")
 		return secrets.CAInfo{}, err
 	}
 	key := caCert.PublicKeyAlgorithm.String()
@@ -99,7 +104,7 @@ func (vs *vaultSecrets) GetCAInfo(CA string) (secrets.CAInfo, error) {
 	case "ECDSA":
 		keyBits = caCert.PublicKey.(*ecdsa.PublicKey).Params().BitSize
 	}
-
+	level.Info(vs.logger).Log("msg", CA+" certificate obtained from Vault and parsed")
 	CAInfo := secrets.CAInfo{
 		C:       strings.Join(caCert.Subject.Country, " "),
 		L:       strings.Join(caCert.Subject.Locality, " "),
@@ -118,7 +123,7 @@ func (vs *vaultSecrets) DeleteCA(CA string) error {
 	deletePath := CA + "/root"
 	_, err := vs.client.Logical().Delete(deletePath)
 	if err != nil {
-		vs.logger.Log("err", err, "msg", "Could not delete CA certificate from Vault")
+		level.Error(vs.logger).Log("err", err, "msg", "Could not delete "+CA+" certificate from Vault")
 		return err
 	}
 	return nil

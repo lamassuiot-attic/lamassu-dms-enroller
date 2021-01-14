@@ -13,6 +13,7 @@ import (
 	"syscall"
 
 	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/log/level"
 	kitprometheus "github.com/go-kit/kit/metrics/prometheus"
 	stdprometheus "github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -21,25 +22,30 @@ import (
 func main() {
 	var logger log.Logger
 	{
-		logger = log.NewLogfmtLogger(os.Stderr)
+		logger = log.NewJSONLogger(os.Stdout)
 		logger = log.With(logger, "ts", log.DefaultTimestampUTC)
 		logger = log.With(logger, "caller", log.DefaultCaller)
+		logger = level.NewFilter(logger, level.AllowInfo())
+
 	}
 
 	err, cfg := configs.NewConfig("scep")
 	if err != nil {
-		logger.Log("err", err, "msg", "Could not read environment configuration values")
+		level.Error(logger).Log("err", err, "msg", "Could not read environment configuration values")
 		os.Exit(1)
 	}
+	level.Info(logger).Log("msg", "Environment configuration values loaded")
 
 	connStr := "dbname=" + cfg.PostgresDB + " user=" + cfg.PostgresUser + " password=" + cfg.PostgresPassword + " host=" + cfg.PostgresHostname + " port=" + cfg.PostgresPort + " sslmode=disable"
 	db, err := db.NewDB("postgres", connStr, logger)
 	if err != nil {
-		logger.Log("err", err, "msg", "Could not start connection with CSRs database")
+		level.Error(logger).Log("err", err, "msg", "Could not start connection with signed certificates database")
 		os.Exit(1)
 	}
+	level.Info(logger).Log("msg", "Connection established with signed certificates database")
 
 	auth := auth.NewAuth(cfg.KeycloakHostname, cfg.KeycloakPort, cfg.KeycloakProtocol, cfg.KeycloakRealm, cfg.KeycloakCA)
+	level.Info(logger).Log("msg", "Connection established with authentication system")
 
 	fieldKeys := []string{"method"}
 
@@ -65,9 +71,10 @@ func main() {
 
 	consulsd, err := consul.NewServiceDiscovery(cfg.ConsulProtocol, cfg.ConsulHost, cfg.ConsulPort, logger)
 	if err != nil {
-		logger.Log("err", err, "msg", "Could not start connection with Consul Service Discovery")
+		level.Error(logger).Log("err", err, "msg", "Could not start connection with Consul Service Discovery")
 		os.Exit(1)
 	}
+	level.Info(logger).Log("msg", "Connection established with Consul Service Discovery")
 
 	mux := http.NewServeMux()
 
@@ -83,12 +90,12 @@ func main() {
 	}()
 
 	go func() {
-		logger.Log("transport", "HTTPS", "addr", "httpAddr")
+		level.Info(logger).Log("transport", "HTTPS", "address", ":"+cfg.Port, "msg", "listening")
 		consulsd.Register("https", "scep", cfg.Port)
 		errs <- http.ListenAndServeTLS(":"+cfg.Port, cfg.CertFile, cfg.KeyFile, nil)
 	}()
 
-	logger.Log("exit", <-errs)
+	level.Info(logger).Log("exit", <-errs)
 	consulsd.Deregister()
 
 }
