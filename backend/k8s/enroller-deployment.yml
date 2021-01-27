@@ -1,0 +1,104 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: enroller
+  labels:
+    app: enroller
+  annotations:
+    "sidecar.jaegertracing.io/inject": "true"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: enroller
+  template:
+    metadata:
+      labels:
+        app: enroller
+    spec:
+      containers:
+        - name: enroller
+          image: enroller:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8085
+          volumeMounts:
+            - name: ca
+              mountPath: "/ca"
+              readOnly: true 
+            - name: certs
+              mountPath: "/certs"
+              readOnly: true
+            - name: enroller-home
+              mountPath: /var/lib/lksnext/lamassu/enroller
+          env:
+            - name: ENROLLER_PORT
+              value : "8085"
+            - name: ENROLLER_HOMEPATH
+              value: "/var/lib/lksnext/lamassu/enroller"
+            - name: ENROLLER_POSTGRESDB
+              value: "enroller"
+            - name: ENROLLER_POSTGRESUSER
+              valueFrom:
+                secretKeyRef:
+                  name: enroller-db-secrets
+                  key: dbuser
+            - name: ENROLLER_POSTGRESPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: enroller-db-secrets
+                  key: dbpassword
+            - name: ENROLLER_POSTGRESHOSTNAME
+              value: "enrollerdb"
+            - name: ENROLLER_POSTGRESPORT
+              value: "5432"
+            - name: ENROLLER_KEYCLOAKHOSTNAME
+              value: "keycloak"
+            - name: ENROLLER_KEYCLOAKPORT
+              value: "8443"
+            - name: ENROLLER_KEYCLOAKREALM
+              value: "lamassu"
+            - name: ENROLLER_KEYCLOAKPROTOCOL
+              value: "https"
+            - name: ENROLLER_KEYCLOAKCA
+              value: "/certs/keycloak.crt"
+            - name: ENROLLER_ENROLLERUIPROTOCOL
+              value: "https"
+            - name: ENROLLER_ENROLLERUIHOST
+              value: "enrollerui"
+            - name: ENROLLER_CAPATH
+              value: "/ca"
+            - name: ENROLLER_CACERTFILE
+              value: "/ca/enroller.crt"
+            - name: ENROLLER_CAKEYFILE
+              value: "/ca/enroller.key"
+            - name: ENROLLER_CERTFILE
+              value: "/certs/enroller.crt"
+            - name: ENROLLER_KEYFILE
+              value: "/certs/enroller.key"
+            - name: ENROLLER_OCSPSERVER
+              value: "http://ocsp.default.svc.cluster.local:9098"
+            - name: ENROLLER_CONSULPROTOCOL
+              value: "https"
+            - name: ENROLLER_CONSULHOST
+              value: consul-server
+            - name: ENROLLER_CONSULPORT
+              value: "8501"
+            - name: ENROLLER_CONSULCA
+              value: "/certs/consul.crt"
+            - name: JAEGER_SERVICE_NAME
+              value: "enroller"
+            - name: JAEGER_AGENT_HOST
+              value: "localhost"
+            - name: JAEGER_AGENT_PORT
+              value: "6831"
+      volumes:
+        - name: ca
+          secret:
+            secretName: enroller-ca
+        - name: certs
+          secret:
+            secretName: enroller-certs
+        - name: enroller-home
+          hostPath:
+            path: /data/enroller-home/
