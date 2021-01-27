@@ -12,8 +12,9 @@ type Config struct {
 	PostgresPort     string
 
 	ConsulProtocol string
-	ConsulHost string
-	ConsulPort string
+	ConsulHost     string
+	ConsulPort     string
+	ConsulCA       string
 
 	HomePath string
 

@@ -5,9 +5,11 @@ import (
 	"enroller/pkg/scep/crypto"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/log/level"
 
 	_ "github.com/lib/pq"
 )
@@ -15,11 +17,12 @@ import (
 func NewDB(driverName string, dataSourceName string, logger log.Logger) (*DB, error) {
 	db, err := sql.Open(driverName, dataSourceName)
 	if err != nil {
+		level.Error(logger).Log("err", err, "msg", "Could not open connection with signed certificates database")
 		return nil, err
 	}
 	err = checkDBAlive(db)
 	for err != nil {
-		fmt.Println("Trying to connect to DB")
+		level.Warn(logger).Log("msg", "Trying to connect to CSRs DB")
 		err = checkDBAlive(db)
 	}
 
@@ -50,9 +53,11 @@ func (db *DB) InsertCRT(crt crypto.CRT) error {
 
 	err := db.QueryRow(sqlStatement, crt.Status, crt.ExpirationDate, crt.RevocationDate, serialHex, crt.DN, crt.CRTPath, crt.Key, crt.KeySize).Scan(&serial)
 	if err != nil {
-		db.logger.Log("err", err, "msg", "Could not insert certificate in database")
+		level.Error(db.logger).Log("err", err, "msg", "Could not insert certificate with serial "+crt.Serial+" in database")
 		return err
 	}
+	level.Info(db.logger).Log("msg", "Certificate with serial "+serial+" inserted in database")
+
 	return nil
 }
 
@@ -68,9 +73,10 @@ func (db *DB) SelectCRT(dn string, serial string) (crypto.CRT, error) {
 	var crt crypto.CRT
 	err := row.Scan(&crt.Status, &crt.ExpirationDate, &crt.RevocationDate, &crt.Serial, &crt.DN, &crt.CRTPath, &crt.Key, &crt.KeySize)
 	if err != nil {
-		db.logger.Log("err", err, "msg", "Could not obtain certificate from database")
+		level.Error(db.logger).Log("err", err, "msg", "Could not obtain certificate with DN "+dn+" and serial "+serial+" from database")
 		return crypto.CRT{}, err
 	}
+	level.Info(db.logger).Log("msg", "Certificate with DN "+dn+" and serial "+serial+" read from database")
 	return crt, nil
 }
 
@@ -83,7 +89,7 @@ func (db *DB) GetCRTs() (crypto.CRTs, error) {
 	rows, err := db.Query(sqlStatement)
 
 	if err != nil {
-		db.logger.Log("err", err, "msg", "Could not obtain certificates from database or its empty")
+		level.Error(db.logger).Log("err", err, "msg", "Could not obtain certificates from database or the database is empty")
 		return crypto.CRTs{CRTs: []crypto.CRT{}}, err
 	}
 
@@ -94,17 +100,18 @@ func (db *DB) GetCRTs() (crypto.CRTs, error) {
 		var crt crypto.CRT
 		err := rows.Scan(&crt.Status, &crt.ExpirationDate, &crt.RevocationDate, &crt.Serial, &crt.DN, &crt.CRTPath, &crt.Key, &crt.KeySize)
 		if err != nil {
-			db.logger.Log("err", err, "msg", "Unable to read database certificate row")
+			level.Error(db.logger).Log("err", err, "msg", "Unable to read database certificate row")
 			return crypto.CRTs{CRTs: []crypto.CRT{}}, err
 		}
+		level.Info(db.logger).Log("msg", "Certificate with serial "+crt.Serial+" read from database")
 		crts = append(crts, crt)
 	}
 
 	if err = rows.Err(); err != nil {
-		db.logger.Log("err", err)
+		level.Error(db.logger).Log("err", err)
 		return crypto.CRTs{CRTs: []crypto.CRT{}}, err
 	}
-
+	level.Info(db.logger).Log("msg", strconv.Itoa(len(crts))+" CSRs read from database")
 	return crypto.CRTs{CRTs: crts}, nil
 }
 
@@ -118,18 +125,19 @@ func (db *DB) RevokeCRT(dn string, serial string) error {
 	`
 	res, err := db.Exec(sqlStatement, makeOpenSSLTime(time.Now()), dn, serialHex)
 	if err != nil {
-		db.logger.Log("err", err, "msg", "Could not revoke certificate in database")
+		level.Error(db.logger).Log("err", err, "msg", "Could not revoke certificate with DN "+dn+" and serial "+serial+" in database")
 		return err
 	}
 	count, err := res.RowsAffected()
 	if err != nil {
-		db.logger.Log("err", err, "msg", "Could not update certificate in database")
+		level.Error(db.logger).Log("err", err, "msg", "Could not revoke certificate with DN "+dn+" and serial "+serial+" in database")
 		return err
 	}
 
 	if count <= 0 {
-		db.logger.Log("err", "No rows have been updated in database")
-		return errors.New("No rows have been updated in database")
+		err = errors.New("No rows have been updated in database")
+		level.Error(db.logger).Log("err", err)
+		return err
 	}
 
 	return nil
@@ -143,17 +151,18 @@ func (db *DB) Delete(dn string, serial string) error {
 	serialHex := fmt.Sprintf("%x", serial)
 	res, err := db.Exec(sqlStatement, dn, serialHex)
 	if err != nil {
-		db.logger.Log("err", err, "msg", "Could not delete certificate from database")
+		level.Error(db.logger).Log("err", err, "msg", "Could not delete certificate with DN "+dn+" and serial "+serial+" from database")
 		return err
 	}
 	count, err := res.RowsAffected()
 	if err != nil {
-		db.logger.Log("err", err, "msg", "Could not update certificate in database")
+		level.Error(db.logger).Log("err", err, "msg", "Could not delete certificate with DN "+dn+" and serial "+serial+" from database")
 		return err
 	}
 	if count <= 0 {
-		db.logger.Log("err", "No rows have been updated in database")
-		return errors.New("No rows have been updated in database")
+		err = errors.New("No rows have been updated in database")
+		level.Error(db.logger).Log("err", err)
+		return err
 	}
 	return nil
 }

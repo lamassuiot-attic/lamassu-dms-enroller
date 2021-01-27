@@ -12,8 +12,10 @@ import (
 	stdjwt "github.com/dgrijalva/jwt-go"
 	"github.com/go-kit/kit/auth/jwt"
 	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/tracing/opentracing"
 	"github.com/go-kit/kit/transport"
 	httptransport "github.com/go-kit/kit/transport/http"
+	stdopentracing "github.com/opentracing/opentracing-go"
 )
 
 type errorer interface {
@@ -22,9 +24,9 @@ type errorer interface {
 
 var claims = &auth.KeycloakClaims{}
 
-func MakeHTTPHandler(s Service, logger log.Logger, auth auth.Auth) http.Handler {
+func MakeHTTPHandler(s Service, logger log.Logger, auth auth.Auth, otTracer stdopentracing.Tracer) http.Handler {
 	r := mux.NewRouter()
-	e := MakeServerEndpoints(s)
+	e := MakeServerEndpoints(s, otTracer)
 
 	options := []httptransport.ServerOption{
 		httptransport.ServerErrorHandler(transport.NewLogErrorHandler(logger)),
@@ -36,21 +38,21 @@ func MakeHTTPHandler(s Service, logger log.Logger, auth auth.Auth) http.Handler 
 		e.HealthEndpoint,
 		decodeHealthRequest,
 		encodeResponse,
-		options...,
+		append(options, httptransport.ServerBefore(opentracing.HTTPToContext(otTracer, "Health", logger)))...,
 	))
 
 	r.Methods("GET").Path("/v1/scep").Handler(httptransport.NewServer(
 		jwt.NewParser(auth.Kf, stdjwt.SigningMethodRS256, auth.KeycloakClaimsFactory)(e.GetSCEPCRTsEndpoint),
 		decodeGetSCEPCRTsRequest,
 		encodeResponse,
-		options...,
+		append(options, httptransport.ServerBefore(opentracing.HTTPToContext(otTracer, "GetSCEPCRT", logger)))...,
 	))
 
 	r.Methods("PUT").Path("/v1/scep/{serial}").Handler(httptransport.NewServer(
 		jwt.NewParser(auth.Kf, stdjwt.SigningMethodRS256, auth.KeycloakClaimsFactory)(e.PutRevokeSCEPCRTEndpoint),
 		decodePutRevokeSCEPCRTRequest,
 		encodeResponse,
-		options...,
+		append(options, httptransport.ServerBefore(opentracing.HTTPToContext(otTracer, "RevokeSCEPCRT", logger)))...,
 	))
 
 	return r

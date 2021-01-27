@@ -1,13 +1,13 @@
 package api
 
 import (
+	"bytes"
 	"context"
 	"enroller/pkg/scep/configs"
 	"enroller/pkg/scep/crypto"
 	"enroller/pkg/scep/models/db"
 	"fmt"
 	"math/big"
-	"os"
 	"testing"
 	"time"
 
@@ -102,12 +102,8 @@ func TestRevokeSCEPCRT(t *testing.T) {
 }
 
 func setup() *serviceSetUp {
-	var logger log.Logger
-	{
-		logger = log.NewLogfmtLogger(os.Stderr)
-		logger = log.With(logger, "ts", log.DefaultTimestampUTC)
-		logger = log.With(logger, "caller", log.DefaultCaller)
-	}
+	buf := &bytes.Buffer{}
+	logger := log.NewJSONLogger(buf)
 	err, cfg := configs.NewConfig("sceptest")
 	if err != nil {
 		panic(err)

@@ -5,6 +5,8 @@ import (
 	"enroller/pkg/ca/secrets"
 
 	"github.com/go-kit/kit/endpoint"
+	"github.com/go-kit/kit/tracing/opentracing"
+	stdopentracing "github.com/opentracing/opentracing-go"
 )
 
 type Endpoints struct {
@@ -14,12 +16,35 @@ type Endpoints struct {
 	DeleteCAEndpoint  endpoint.Endpoint
 }
 
-func MakeServerEndpoints(s Service) Endpoints {
+func MakeServerEndpoints(s Service, otTracer stdopentracing.Tracer) Endpoints {
+	var healthEndpoint endpoint.Endpoint
+	{
+		healthEndpoint = MakeHealthEndpoint(s)
+		healthEndpoint = opentracing.TraceServer(otTracer, "Health")(healthEndpoint)
+	}
+
+	var getCAsEndpoint endpoint.Endpoint
+	{
+		getCAsEndpoint = MakeGetCAsEndpoint(s)
+		getCAsEndpoint = opentracing.TraceServer(otTracer, "GetCAs")(getCAsEndpoint)
+	}
+
+	var getCAInfoEndpoint endpoint.Endpoint
+	{
+		getCAInfoEndpoint = MakeGetCAInfoEndpoint(s)
+		getCAInfoEndpoint = opentracing.TraceServer(otTracer, "GetCAInfo")(getCAInfoEndpoint)
+	}
+
+	var deleteCAEndpoint endpoint.Endpoint
+	{
+		deleteCAEndpoint = MakeDeleteCAEndpoint(s)
+		deleteCAEndpoint = opentracing.TraceServer(otTracer, "DeleteCA")(deleteCAEndpoint)
+	}
 	return Endpoints{
-		HealthEndpoint:    MakeHealthEndpoint(s),
-		GetCAsEndpoint:    MakeGetCAsEndpoint(s),
-		GetCAInfoEndpoint: MakeGetCAInfoEndpoint(s),
-		DeleteCAEndpoint:  MakeDeleteCAEndpoint(s),
+		HealthEndpoint:    healthEndpoint,
+		GetCAsEndpoint:    getCAsEndpoint,
+		GetCAInfoEndpoint: getCAInfoEndpoint,
+		DeleteCAEndpoint:  deleteCAEndpoint,
 	}
 }
 

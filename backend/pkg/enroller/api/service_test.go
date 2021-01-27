@@ -21,7 +21,6 @@ import (
 	"enroller/pkg/enroller/secrets"
 	secretsfile "enroller/pkg/enroller/secrets/file"
 	"fmt"
-	"os"
 	"regexp"
 	"strings"
 	"testing"
@@ -438,12 +437,8 @@ func TestDelete(t *testing.T) {
 }
 
 func setup() *serviceSetUp {
-	var logger log.Logger
-	{
-		logger = log.NewLogfmtLogger(os.Stderr)
-		logger = log.With(logger, "ts", log.DefaultTimestampUTC)
-		logger = log.With(logger, "caller", log.DefaultCaller)
-	}
+	buf := &bytes.Buffer{}
+	logger := log.NewJSONLogger(buf)
 	err, cfg := configs.NewConfig("enrollertest")
 	if err != nil {
 		panic(err)

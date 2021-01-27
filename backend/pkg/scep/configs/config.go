@@ -14,6 +14,7 @@ type Config struct {
 	ConsulProtocol string
 	ConsulHost     string
 	ConsulPort     string
+	ConsulCA       string
 
 	EnrollerUIHost     string
 	EnrollerUIPort     string

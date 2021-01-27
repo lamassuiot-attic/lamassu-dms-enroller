@@ -6,8 +6,10 @@ import (
 	"enroller/pkg/enroller/models/certs/store"
 	"errors"
 	"fmt"
+	"strconv"
 
 	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/log/level"
 
 	"math/big"
 )
@@ -15,12 +17,12 @@ import (
 func NewDB(driverName string, dataSourceName string, logger log.Logger) (store.DB, error) {
 	db, err := sql.Open(driverName, dataSourceName)
 	if err != nil {
-		logger.Log("err", err, "msg", "Could not open connection with signed certificates database")
+		level.Error(logger).Log("err", err, "msg", "Could not open connection with signed certificates database")
 		return nil, err
 	}
 	err = checkDBAlive(db)
 	for err != nil {
-		logger.Log("info", "msg", "Trying to connect with signed certificates database")
+		level.Warn(logger).Log("msg", "Trying to connect to CSRs DB")
 		err = checkDBAlive(db)
 	}
 
@@ -51,9 +53,10 @@ func (db *DB) Insert(crt certs.CRT) error {
 
 	err := db.QueryRow(sqlStatement, crt.ID, crt.Status, crt.ExpirationDate, crt.RevocationDate, serialHex, crt.DN, crt.CertPath).Scan(&serial)
 	if err != nil {
-		db.logger.Log("err", err, "msg", "Could not insert certificate in database")
+		level.Error(db.logger).Log("err", err, "msg", "Could not insert certificate with ID "+strconv.Itoa(crt.ID)+" in database")
 		return err
 	}
+	level.Info(db.logger).Log("msg", "Certificate with ID "+strconv.Itoa(crt.ID)+" inserted in database")
 	return nil
 }
 
@@ -87,19 +90,20 @@ func (db *DB) Revoke(id int, revocationDate string) error {
 
 	res, err := db.Exec(sqlStatement, revocationDate, id)
 	if err != nil {
-		db.logger.Log("err", err, "msg", "Could not revoke certificate in database")
+		level.Error(db.logger).Log("err", err, "msg", "Could not revoke certificate with ID "+strconv.Itoa(id)+" in database")
 		return err
 	}
 
 	rowsAffected, err := res.RowsAffected()
 	if err != nil {
-		db.logger.Log("err", err, "msg", "Could not update certificate in database")
+		level.Error(db.logger).Log("err", err, "msg", "Could not revoke certificate with ID "+strconv.Itoa(id)+" in database")
 		return err
 	}
 
 	if rowsAffected <= 0 {
-		db.logger.Log("err", "No rows have been updated in database")
-		return errors.New("No rows have been updated in database")
+		err = errors.New("No rows have been updated in database")
+		level.Error(db.logger).Log("err", err)
+		return err
 	}
 	return nil
 }
@@ -111,17 +115,18 @@ func (db *DB) Delete(id int) error {
 	`
 	res, err := db.Exec(sqlStatement, id)
 	if err != nil {
-		db.logger.Log("err", err, "msg", "Could not delete certificate from database")
+		level.Error(db.logger).Log("err", err, "msg", "Could not delete certificate with ID "+strconv.Itoa(id)+" from database")
 		return err
 	}
 	count, err := res.RowsAffected()
 	if err != nil {
-		db.logger.Log("err", err, "msg", "Could not update certificate in database")
+		level.Error(db.logger).Log("err", err, "msg", "Could not delete certificate with ID "+strconv.Itoa(id)+" from database")
 		return err
 	}
 	if count <= 0 {
-		db.logger.Log("err", "No rows have been updated in database")
-		return errors.New("No rows have been updated in database")
+		err = errors.New("No rows have been updated in database")
+		level.Error(db.logger).Log("err", err)
+		return err
 	}
 	return nil
 }

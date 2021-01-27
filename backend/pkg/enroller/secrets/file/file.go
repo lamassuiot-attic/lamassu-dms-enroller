@@ -8,10 +8,12 @@ import (
 	"enroller/pkg/enroller/crypto"
 	certstore "enroller/pkg/enroller/models/certs/store"
 	"enroller/pkg/enroller/secrets"
+	"fmt"
 	"io/ioutil"
 	"time"
 
 	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/log/level"
 )
 
 type File struct {
@@ -29,19 +31,22 @@ func NewFile(CACert string, CAKey string, OCSPServer string, certsDBStore certst
 func (f *File) SignCSR(csr *x509.CertificateRequest) ([]byte, error) {
 	caCert, err := loadCACert(f.CACert)
 	if err != nil {
-		f.logger.Log("err", err, "msg", "Could not load CA certificate")
+		level.Error(f.logger).Log("err", err, "msg", "Could not load CA certificate")
 		return nil, err
 	}
+	level.Info(f.logger).Log("msg", "CA certificate loaded")
 	caKey, err := loadCAKey(f.CAKey)
 	if err != nil {
-		f.logger.Log("err", err, "msg", "Could not load CA key")
+		level.Error(f.logger).Log("err", err, "msg", "Could not load CA key")
 		return nil, err
 	}
+	level.Info(f.logger).Log("msg", "CA key loaded")
 	serial, err := f.certsDBStore.Serial()
 	if err != nil {
-		f.logger.Log("err", err, "msg", "Could not get serial from database")
+		level.Error(f.logger).Log("err", err, "msg", "Could not get serial from database")
 		return nil, err
 	}
+	level.Info(f.logger).Log("msg", "Serial obtained from database")
 	template := &x509.Certificate{
 		SerialNumber: serial,
 		Subject:      csr.Subject,
@@ -57,9 +62,11 @@ func (f *File) SignCSR(csr *x509.CertificateRequest) ([]byte, error) {
 
 	cert, err := x509.CreateCertificate(rand.Reader, template, caCert, csr.PublicKey, caKey)
 	if err != nil {
+
 		f.logger.Log("err", err, "msg", "Could not create signed certificate")
 		return nil, err
 	}
+	level.Info(f.logger).Log("msg", "CSR with serial "+fmt.Sprintf("%x", serial)+" signed by Enroller CA")
 	return cert, nil
 
 }

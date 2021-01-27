@@ -5,6 +5,8 @@ import (
 	"enroller/pkg/enroller/models/csr"
 
 	"github.com/go-kit/kit/endpoint"
+	"github.com/go-kit/kit/tracing/opentracing"
+	stdopentracing "github.com/opentracing/opentracing-go"
 )
 
 type Endpoints struct {
@@ -18,16 +20,57 @@ type Endpoints struct {
 	GetCRTEndpoint             endpoint.Endpoint
 }
 
-func MakeServerEndpoints(s Service) Endpoints {
+func MakeServerEndpoints(s Service, otTracer stdopentracing.Tracer) Endpoints {
+	var healthEndpoint endpoint.Endpoint
+	{
+		healthEndpoint = MakeHealthEndpoint(s)
+		healthEndpoint = opentracing.TraceServer(otTracer, "Health")(healthEndpoint)
+	}
+	var postCSREndpoint endpoint.Endpoint
+	{
+		postCSREndpoint = MakePostCSREndpoint(s)
+		postCSREndpoint = opentracing.TraceServer(otTracer, "PostCSR")(postCSREndpoint)
+	}
+	var getPendingCSRsEndpoint endpoint.Endpoint
+	{
+		getPendingCSRsEndpoint = MakeGetPendingCSRsEndpoint(s)
+		getPendingCSRsEndpoint = opentracing.TraceServer(otTracer, "GetPendingCSRs")(getPendingCSRsEndpoint)
+	}
+	var getPendingCSRDBEndpoint endpoint.Endpoint
+	{
+		getPendingCSRDBEndpoint = MakeGetPendingCSRDBEndpoint(s)
+		getPendingCSRDBEndpoint = opentracing.TraceServer(otTracer, "GetPendingCSRDB")(getPendingCSRDBEndpoint)
+	}
+	var getPendingCSRFileEndpoint endpoint.Endpoint
+	{
+		getPendingCSRFileEndpoint = MakeGetPendingCSRFileEndpoint(s)
+		getPendingCSRFileEndpoint = opentracing.TraceServer(otTracer, "GetPendingCSRFile")(getPendingCSRFileEndpoint)
+	}
+	var putChangeCSRStatusEndpoint endpoint.Endpoint
+	{
+		putChangeCSRStatusEndpoint = MakePutChangeCSRStatusEndpoint(s)
+		putChangeCSRStatusEndpoint = opentracing.TraceServer(otTracer, "PutChangeCSRStatus")(putChangeCSRStatusEndpoint)
+	}
+	var deleteCSREndpoint endpoint.Endpoint
+	{
+		deleteCSREndpoint = MakeDeleteCSREndpoint(s)
+		deleteCSREndpoint = opentracing.TraceServer(otTracer, "DeleteCSR")(deleteCSREndpoint)
+	}
+	var getCRTEndpoint endpoint.Endpoint
+	{
+		getCRTEndpoint = MakeGetCTREndpoint(s)
+		getCRTEndpoint = opentracing.TraceServer(otTracer, "GetCRT")(getCRTEndpoint)
+	}
+
 	return Endpoints{
-		HealthEndpoint:             MakeHealthEndpoint(s),
-		PostCSREndpoint:            MakePostCSREndpoint(s),
-		GetPendingCSRsEndpoint:     MakeGetPendingCSRsEndpoint(s),
-		GetPendingCSRDBEndpoint:    MakeGetPendingCSRDBEndpoint(s),
-		GetPendingCSRFileEndpoint:  MakeGetPendingCSRFileEndpoint(s),
-		PutChangeCSRStatusEndpoint: MakePutChangeCSRStatusEndpoint(s),
-		DeleteCSREndpoint:          MakeDeleteCSREndpoint(s),
-		GetCRTEndpoint:             MakeGetCTREndpoint(s),
+		HealthEndpoint:             healthEndpoint,
+		PostCSREndpoint:            postCSREndpoint,
+		GetPendingCSRsEndpoint:     getPendingCSRsEndpoint,
+		GetPendingCSRDBEndpoint:    getPendingCSRDBEndpoint,
+		GetPendingCSRFileEndpoint:  getPendingCSRFileEndpoint,
+		PutChangeCSRStatusEndpoint: putChangeCSRStatusEndpoint,
+		DeleteCSREndpoint:          deleteCSREndpoint,
+		GetCRTEndpoint:             getCRTEndpoint,
 	}
 }
 
