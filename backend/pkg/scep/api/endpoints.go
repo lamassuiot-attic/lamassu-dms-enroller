@@ -5,6 +5,8 @@ import (
 	"enroller/pkg/scep/crypto"
 
 	"github.com/go-kit/kit/endpoint"
+	"github.com/go-kit/kit/tracing/opentracing"
+	stdopentracing "github.com/opentracing/opentracing-go"
 )
 
 type Endpoints struct {
@@ -13,11 +15,27 @@ type Endpoints struct {
 	PutRevokeSCEPCRTEndpoint endpoint.Endpoint
 }
 
-func MakeServerEndpoints(s Service) Endpoints {
+func MakeServerEndpoints(s Service, otTracer stdopentracing.Tracer) Endpoints {
+	var healthEndpoint endpoint.Endpoint
+	{
+		healthEndpoint = MakeHealthEndpoint(s)
+		healthEndpoint = opentracing.TraceServer(otTracer, "Health")(healthEndpoint)
+	}
+
+	var getSCEPCRTEndpoint endpoint.Endpoint
+	{
+		getSCEPCRTEndpoint = MakeGetSCEPCRTsEndpoint(s)
+		getSCEPCRTEndpoint = opentracing.TraceServer(otTracer, "GetSCEPCRT")(getSCEPCRTEndpoint)
+	}
+	var putRevokeSCEPCRTEndpoint endpoint.Endpoint
+	{
+		putRevokeSCEPCRTEndpoint = MakePutRevokeSCEPCRTEndpoint(s)
+		putRevokeSCEPCRTEndpoint = opentracing.TraceServer(otTracer, "RevokeSCEPCRT")(putRevokeSCEPCRTEndpoint)
+	}
 	return Endpoints{
-		HealthEndpoint:           MakeHealthEndpoint(s),
-		GetSCEPCRTsEndpoint:      MakeGetSCEPCRTsEndpoint(s),
-		PutRevokeSCEPCRTEndpoint: MakePutRevokeSCEPCRTEndpoint(s),
+		HealthEndpoint:           healthEndpoint,
+		GetSCEPCRTsEndpoint:      getSCEPCRTEndpoint,
+		PutRevokeSCEPCRTEndpoint: putRevokeSCEPCRTEndpoint,
 	}
 }
 

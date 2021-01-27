@@ -27,13 +27,13 @@ func (f *File) Insert(id int, data []byte) error {
 	name := f.dirPath + "/" + strconv.Itoa(id) + ".csr"
 	file, err := os.OpenFile(name, os.O_WRONLY|os.O_CREATE|os.O_EXCL, csrPerm)
 	if err != nil {
-		level.Error(f.logger).Log("err", err.Error, "msg", "Could not insert CSR with ID "+strconv.Itoa(id)+" in filesystem")
+		level.Error(f.logger).Log("err", err, "msg", "Could not insert CSR with ID "+strconv.Itoa(id)+" in filesystem")
 		return err
 	}
 	defer file.Close()
 
 	if _, err := file.Write(data); err != nil {
-		f.logger.Log("err", err, "msg", "Error encoding bytes as a CSR")
+		level.Error(f.logger).Log("err", err, "msg", "Error encoding bytas as CSR")
 		os.Remove(name)
 		return err
 	}
@@ -45,7 +45,7 @@ func (f *File) SelectByID(id int) ([]byte, error) {
 	name := f.dirPath + "/" + strconv.Itoa(id) + ".csr"
 	data, err := ioutil.ReadFile(name)
 	if err != nil {
-		level.Error(f.logger).Log("err", err.Error, "msg", "Could not obtain CSR with ID "+strconv.Itoa(id)+" from filesystem")
+		level.Error(f.logger).Log("err", err, "msg", "Could not obtain CSR with ID "+strconv.Itoa(id)+" from filesystem")
 		return nil, err
 	}
 	level.Info(f.logger).Log("msg", "CSR with ID "+strconv.Itoa(id)+" obtained from file system")
@@ -56,7 +56,7 @@ func (f *File) Delete(id int) error {
 	name := f.dirPath + "/" + strconv.Itoa(id) + ".csr"
 	err := os.Remove(name)
 	if err != nil {
-		level.Error(f.logger).Log("err", err.Error, "msg", "Could not delete CSR with ID "+strconv.Itoa(id)+" from filesystem")
+		level.Error(f.logger).Log("err", err, "msg", "Could not delete CSR with ID "+strconv.Itoa(id)+" from filesystem")
 		return err
 	}
 	level.Info(f.logger).Log("msg", "CSR with ID "+strconv.Itoa(id)+" deleted from file system")

@@ -21,6 +21,7 @@ import (
 	kitprometheus "github.com/go-kit/kit/metrics/prometheus"
 	stdprometheus "github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	jaegercfg "github.com/uber/jaeger-client-go/config"
 )
 
 func main() {
@@ -64,6 +65,20 @@ func main() {
 	secrets := secrets.NewFile(cfg.CACertFile, cfg.CAKeyFile, cfg.OCSPServer, certsdb, logger)
 	level.Info(logger).Log("msg", "Connection established with secret engine")
 
+	jcfg, err := jaegercfg.FromEnv()
+	if err != nil {
+		level.Error(logger).Log("err", err, "msg", "Could not load Jaeger configuration values fron environment")
+		os.Exit(1)
+	}
+	level.Info(logger).Log("msg", "Jaeger configuration values loaded")
+	tracer, closer, err := jcfg.NewTracer()
+	if err != nil {
+		level.Error(logger).Log("err", err, "msg", "Could not start Jaeger tracer")
+		os.Exit(1)
+	}
+	defer closer.Close()
+	level.Info(logger).Log("msg", "Jaeger tracer started")
+
 	fieldKeys := []string{"method"}
 
 	var s api.Service
@@ -86,16 +101,22 @@ func main() {
 		)(s)
 	}
 
-	consulsd, err := consul.NewServiceDiscovery(cfg.ConsulProtocol, cfg.ConsulHost, cfg.ConsulPort, logger)
+	consulsd, err := consul.NewServiceDiscovery(cfg.ConsulProtocol, cfg.ConsulHost, cfg.ConsulPort, cfg.ConsulCA, logger)
 	if err != nil {
 		level.Error(logger).Log("err", err, "msg", "Could not start connection with Consul Service Discovery")
 		os.Exit(1)
 	}
 	level.Info(logger).Log("msg", "Connection established with Consul Service Discovery")
+	err = consulsd.Register("https", "enroller", cfg.Port)
+	if err != nil {
+		level.Error(logger).Log("err", err, "msg", "Could not register service liveness information to Consul")
+		os.Exit(1)
+	}
+	level.Info(logger).Log("msg", "Service liveness information registered to Consul")
 
 	mux := http.NewServeMux()
 
-	mux.Handle("/v1/", api.MakeHTTPHandler(s, log.With(logger, "component", "HTTPS"), auth))
+	mux.Handle("/v1/", api.MakeHTTPHandler(s, log.With(logger, "component", "HTTPS"), auth, tracer))
 	http.Handle("/", accessControl(mux, cfg.EnrollerUIProtocol, cfg.EnrollerUIHost, cfg.EnrollerUIPort))
 	http.Handle("/metrics", promhttp.Handler())
 
@@ -108,18 +129,28 @@ func main() {
 
 	go func() {
 		level.Info(logger).Log("transport", "HTTPS", "address", ":"+cfg.Port, "msg", "listening")
-		consulsd.Register("https", "enroller", cfg.Port)
 		errs <- http.ListenAndServeTLS(":"+cfg.Port, cfg.CertFile, cfg.KeyFile, nil)
 	}()
 
 	level.Info(logger).Log("exit", <-errs)
-	consulsd.Deregister()
+	err = consulsd.Deregister()
+	if err != nil {
+		level.Error(logger).Log("err", err, "msg", "Could not deregister service liveness information from Consul")
+		os.Exit(1)
+	}
+	level.Info(logger).Log("msg", "Service liveness information deregistered from Consul")
 
 }
 
 func accessControl(h http.Handler, enrollerUIProtocol string, enrollerUIHost string, enrollerUIPort string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", enrollerUIProtocol+"://"+enrollerUIHost+":"+enrollerUIPort)
+		var uiURL string
+		if enrollerUIPort == "" {
+			uiURL = enrollerUIProtocol + "://" + enrollerUIHost
+		} else {
+			uiURL = enrollerUIProtocol + "://" + enrollerUIHost + ":" + enrollerUIPort
+		}
+		w.Header().Set("Access-Control-Allow-Origin", uiURL)
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, DELETE")
 		w.Header().Set("Access-Control-Allow-Headers", "Origin, Content-Type, Authorization")
 

@@ -42,7 +42,7 @@ func checkDBAlive(db *sql.DB) error {
 func (db *DB) Insert(c csr.CSR) (int, error) {
 	id := 0
 	sqlStatement := `
-	INSERT INTO csr_store(countryName, stateOrProvinceName, localityName, organizationName, organizationalUnitName, emailAddress, commonName, status, csrFilePath)
+	INSERT INTO csr_store(c, st, l, o, ou, email, cn, status, csrPath)
 	VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)
 	RETURNING id;
 	`
@@ -90,7 +90,7 @@ func (db *DB) SelectAllByCN(cn string) csr.CSRs {
 	sqlStatement := `
 	SELECT * 
 	FROM csr_store
-	WHERE commonName = $1;
+	WHERE cn = $1;
 	`
 	rows, err := db.Query(sqlStatement, cn)
 	if err != nil {
@@ -194,7 +194,7 @@ func (db *DB) UpdateByID(id int, c csr.CSR) (csr.CSR, error) {
 func (db *DB) UpdateFilePath(c csr.CSR) error {
 	sqlStatement := `
 	UPDATE csr_store
-	SET csrfilepath = $1
+	SET csrPath = $1
 	WHERE id = $2;
 	`
 	res, err := db.Exec(sqlStatement, c.CsrFilePath, c.Id)
