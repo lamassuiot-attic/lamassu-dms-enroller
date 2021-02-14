@@ -79,7 +79,7 @@ func main() {
 	defer closer.Close()
 	level.Info(logger).Log("msg", "Jaeger tracer started")
 
-	fieldKeys := []string{"method"}
+	fieldKeys := []string{"method", "error"}
 
 	var s api.Service
 	{

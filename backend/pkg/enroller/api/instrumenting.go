@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	csrmodel "enroller/pkg/enroller/models/csr"
+	"fmt"
 	"time"
 
 	"github.com/go-kit/kit/metrics"
@@ -26,17 +27,19 @@ func NewInstrumentingMiddleware(counter metrics.Counter, latency metrics.Histogr
 
 func (mw *instrumentingMiddleware) Health(ctx context.Context) bool {
 	defer func(begin time.Time) {
-		mw.requestCount.With("method", "Health").Add(1)
-		mw.requestLatency.With("method", "Health").Observe(time.Since(begin).Seconds())
+		lvs := []string{"method", "Health", "error", "false"}
+		mw.requestCount.With(lvs...).Add(1)
+		mw.requestLatency.With(lvs...).Observe(time.Since(begin).Seconds())
 	}(time.Now())
 
 	return mw.next.Health(ctx)
 }
 
-func (mw *instrumentingMiddleware) PostCSR(ctx context.Context, data []byte) (csrmodel.CSR, error) {
+func (mw *instrumentingMiddleware) PostCSR(ctx context.Context, data []byte) (csr csrmodel.CSR, err error) {
 	defer func(begin time.Time) {
-		mw.requestCount.With("method", "PostCSR").Add(1)
-		mw.requestLatency.With("method", "PostCSR").Observe(time.Since(begin).Seconds())
+		lvs := []string{"method", "PostCSR", "error", fmt.Sprint(err != nil)}
+		mw.requestCount.With(lvs...).Add(1)
+		mw.requestLatency.With(lvs...).Observe(time.Since(begin).Seconds())
 	}(time.Now())
 
 	return mw.next.PostCSR(ctx, data)
@@ -44,53 +47,59 @@ func (mw *instrumentingMiddleware) PostCSR(ctx context.Context, data []byte) (cs
 
 func (mw *instrumentingMiddleware) GetPendingCSRs(ctx context.Context) csrmodel.CSRs {
 	defer func(begin time.Time) {
-		mw.requestCount.With("method", "GetPendingCSRs").Add(1)
-		mw.requestLatency.With("method", "GetPendingCSRs").Observe(time.Since(begin).Seconds())
+		lvs := []string{"method", "GetPendingCSRs", "error", "false"}
+		mw.requestCount.With(lvs...).Add(1)
+		mw.requestLatency.With(lvs...).Observe(time.Since(begin).Seconds())
 	}(time.Now())
 
 	return mw.next.GetPendingCSRs(ctx)
 }
 
-func (mw *instrumentingMiddleware) GetPendingCSRDB(ctx context.Context, id int) (csrmodel.CSR, error) {
+func (mw *instrumentingMiddleware) GetPendingCSRDB(ctx context.Context, id int) (csr csrmodel.CSR, err error) {
 	defer func(begin time.Time) {
-		mw.requestCount.With("method", "GetPendingCSRDB").Add(1)
-		mw.requestLatency.With("method", "GetPendingCSRDB").Observe(time.Since(begin).Seconds())
+		lvs := []string{"method", "GetPendingCSRDB", "error", fmt.Sprint(err != nil)}
+		mw.requestCount.With(lvs...).Add(1)
+		mw.requestLatency.With(lvs...).Observe(time.Since(begin).Seconds())
 	}(time.Now())
 
 	return mw.next.GetPendingCSRDB(ctx, id)
 }
 
-func (mw *instrumentingMiddleware) GetPendingCSRFile(ctx context.Context, id int) ([]byte, error) {
+func (mw *instrumentingMiddleware) GetPendingCSRFile(ctx context.Context, id int) (csr []byte, err error) {
 	defer func(begin time.Time) {
-		mw.requestCount.With("method", "GetPendingCSRFile").Add(1)
-		mw.requestLatency.With("method", "GetPendingCSRFile").Observe(time.Since(begin).Seconds())
+		lvs := []string{"method", "GetPendingCSRFile", "error", fmt.Sprint(err != nil)}
+		mw.requestCount.With(lvs...).Add(1)
+		mw.requestLatency.With(lvs...).Observe(time.Since(begin).Seconds())
 	}(time.Now())
 
 	return mw.next.GetPendingCSRFile(ctx, id)
 }
 
-func (mw *instrumentingMiddleware) PutChangeCSRStatus(ctx context.Context, csr csrmodel.CSR, id int) (csrmodel.CSR, error) {
+func (mw *instrumentingMiddleware) PutChangeCSRStatus(ctx context.Context, csr csrmodel.CSR, id int) (c csrmodel.CSR, err error) {
 	defer func(begin time.Time) {
-		mw.requestCount.With("method", "PutChangeCSRStatus").Add(1)
-		mw.requestLatency.With("method", "PutChangeCSRStatus").Observe(time.Since(begin).Seconds())
+		lvs := []string{"method", "PutChangeCSRStatus", "error", fmt.Sprint(err != nil)}
+		mw.requestCount.With(lvs...).Add(1)
+		mw.requestLatency.With(lvs...).Observe(time.Since(begin).Seconds())
 	}(time.Now())
 
 	return mw.next.PutChangeCSRStatus(ctx, csr, id)
 }
 
-func (mw *instrumentingMiddleware) DeleteCSR(ctx context.Context, id int) error {
+func (mw *instrumentingMiddleware) DeleteCSR(ctx context.Context, id int) (err error) {
 	defer func(begin time.Time) {
-		mw.requestCount.With("method", "DeleteCSR").Add(1)
-		mw.requestLatency.With("method", "DeleteCSR").Observe(time.Since(begin).Seconds())
+		lvs := []string{"method", "DeleteCSR", "error", fmt.Sprint(err != nil)}
+		mw.requestCount.With(lvs...).Add(1)
+		mw.requestLatency.With(lvs...).Observe(time.Since(begin).Seconds())
 	}(time.Now())
 
 	return mw.next.DeleteCSR(ctx, id)
 }
 
-func (mw *instrumentingMiddleware) GetCRT(ctx context.Context, id int) ([]byte, error) {
+func (mw *instrumentingMiddleware) GetCRT(ctx context.Context, id int) (crt []byte, err error) {
 	defer func(begin time.Time) {
-		mw.requestCount.With("method", "GetCRT").Add(1)
-		mw.requestLatency.With("method", "GetCRT").Observe(time.Since(begin).Seconds())
+		lvs := []string{"method", "GetCRT", "error", fmt.Sprint(err != nil)}
+		mw.requestCount.With(lvs...).Add(1)
+		mw.requestLatency.With(lvs...).Observe(time.Since(begin).Seconds())
 	}(time.Now())
 
 	return mw.next.GetCRT(ctx, id)
