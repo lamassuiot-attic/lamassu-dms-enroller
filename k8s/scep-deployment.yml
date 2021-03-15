@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scep
+  labels:
+    app: scep
+  annotations:
+    "sidecar.jaegertracing.io/inject": "true"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: scep
+  template:
+    metadata:
+      labels:
+        app: scep
+    spec:
+      containers:
+        - name: scep
+          image: scep-enroller:latest
+          imagePullPolicy: Never
+          volumeMounts:
+            - name: certs
+              mountPath: "/certs"
+              readOnly: true
+          env:
+            - name: SCEP_PORT
+              value: "8086"
+            - name: SCEP_POSTGRESHOSTNAME
+              value: "scepdb"
+            - name: SCEP_POSTGRESUSER
+              valueFrom:
+                secretKeyRef:
+                  name: scep-db-secrets
+                  key: dbuser
+            - name: SCEP_POSTGRESPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: scep-db-secrets
+                  key: dbpassword
+            - name: SCEP_POSTGRESPORT
+              value: "5432"
+            - name: SCEP_POSTGRESDB
+              value: "scep"
+            - name: SCEP_ENROLLERUIPROTOCOL
+              value: "https"
+            - name: SCEP_ENROLLERUIHOST
+              value: "enrollerui"
+            - name: SCEP_KEYCLOAKHOSTNAME
+              value: "keycloak"
+            - name: SCEP_KEYCLOAKPORT
+              value: "8443"
+            - name: SCEP_KEYCLOAKREALM
+              value: "lamassu"
+            - name: SCEP_KEYCLOAKCA
+              value: "/certs/keycloak.crt"
+            - name: SCEP_KEYCLOAKPROTOCOL
+              value: "https"
+            - name: SCEP_CERTFILE
+              value: "/certs/enroller.crt"
+            - name: SCEP_KEYFILE
+              value: "/certs/enroller.key"
+            - name: SCEP_CONSULPROTOCOL
+              value: "https"
+            - name: SCEP_CONSULHOST
+              value: "consul-server"
+            - name: SCEP_CONSULPORT
+              value: "8501"
+            - name: SCEP_CONSULCA
+              value: "/certs/consul.crt"
+            - name: JAEGER_SERVICE_NAME
+              value: "enroller-scep"
+            - name: JAEGER_AGENT_HOST
+              value: "localhost"
+            - name: JAEGER_AGENT_PORT
+              value: "6831"
+      volumes:
+        - name: certs
+          secret:
+            secretName: enroller-scep-certs
