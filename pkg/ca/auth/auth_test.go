@@ -2,10 +2,11 @@ package auth
 
 import (
 	"crypto/rsa"
-	"enroller/pkg/ca/configs"
-	"enroller/pkg/enroller/crypto"
 	"io/ioutil"
 	"testing"
+
+	"github.com/lamassuiot/enroller/pkg/ca/configs"
+	"github.com/lamassuiot/enroller/pkg/enroller/crypto"
 
 	stdjwt "github.com/dgrijalva/jwt-go"
 )

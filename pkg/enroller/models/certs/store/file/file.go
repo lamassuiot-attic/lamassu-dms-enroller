@@ -2,9 +2,10 @@ package file
 
 import (
 	"encoding/pem"
-	"enroller/pkg/enroller/models/certs/store"
 	"io/ioutil"
 	"os"
+
+	"github.com/lamassuiot/enroller/pkg/enroller/models/certs/store"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"

@@ -1,10 +1,11 @@
 package files
 
 import (
-	"enroller/pkg/enroller/models/csr/store"
 	"io/ioutil"
 	"os"
 	"strconv"
+
+	"github.com/lamassuiot/enroller/pkg/enroller/models/csr/store"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"

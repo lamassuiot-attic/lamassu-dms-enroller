@@ -6,8 +6,8 @@ import (
 	"errors"
 	"sync"
 
-	"enroller/pkg/scep/crypto"
-	"enroller/pkg/scep/models/db"
+	"github.com/lamassuiot/enroller/pkg/scep/crypto"
+	"github.com/lamassuiot/enroller/pkg/scep/models/db"
 )
 
 type Service interface {

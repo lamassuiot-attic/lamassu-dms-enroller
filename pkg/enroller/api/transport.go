@@ -3,12 +3,13 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"enroller/pkg/enroller/auth"
-	"enroller/pkg/enroller/models/csr"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"strconv"
+
+	"github.com/lamassuiot/enroller/pkg/enroller/auth"
+	"github.com/lamassuiot/enroller/pkg/enroller/models/csr"
 
 	"github.com/gorilla/mux"
 

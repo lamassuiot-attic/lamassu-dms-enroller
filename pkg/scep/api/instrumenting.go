@@ -2,9 +2,10 @@ package api
 
 import (
 	"context"
-	"enroller/pkg/scep/crypto"
 	"fmt"
 	"time"
+
+	"github.com/lamassuiot/enroller/pkg/scep/crypto"
 
 	"github.com/go-kit/kit/metrics"
 )

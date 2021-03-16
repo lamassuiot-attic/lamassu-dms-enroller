@@ -1,16 +1,17 @@
 package main
 
 import (
-	"enroller/pkg/ca/api"
-	"enroller/pkg/ca/auth"
-	"enroller/pkg/ca/configs"
-	"enroller/pkg/ca/discovery/consul"
-	"enroller/pkg/ca/secrets/vault"
 	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/lamassuiot/enroller/pkg/ca/api"
+	"github.com/lamassuiot/enroller/pkg/ca/auth"
+	"github.com/lamassuiot/enroller/pkg/ca/configs"
+	"github.com/lamassuiot/enroller/pkg/ca/discovery/consul"
+	"github.com/lamassuiot/enroller/pkg/ca/secrets/vault"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"

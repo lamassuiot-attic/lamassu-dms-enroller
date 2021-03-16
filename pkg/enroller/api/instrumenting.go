@@ -2,9 +2,10 @@ package api
 
 import (
 	"context"
-	csrmodel "enroller/pkg/enroller/models/csr"
 	"fmt"
 	"time"
+
+	csrmodel "github.com/lamassuiot/enroller/pkg/enroller/models/csr"
 
 	"github.com/go-kit/kit/metrics"
 )

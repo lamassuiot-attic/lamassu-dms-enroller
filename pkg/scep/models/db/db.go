@@ -1,7 +1,7 @@
 package db
 
 import (
-	"enroller/pkg/scep/crypto"
+	"github.com/lamassuiot/enroller/pkg/scep/crypto"
 )
 
 type DBSCEPStore interface {

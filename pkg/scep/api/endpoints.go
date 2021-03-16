@@ -2,7 +2,8 @@ package api
 
 import (
 	"context"
-	"enroller/pkg/scep/crypto"
+
+	"github.com/lamassuiot/enroller/pkg/scep/crypto"
 
 	"github.com/go-kit/kit/endpoint"
 	"github.com/go-kit/kit/tracing/opentracing"

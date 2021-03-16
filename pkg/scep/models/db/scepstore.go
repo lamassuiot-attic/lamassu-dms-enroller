@@ -2,11 +2,12 @@ package db
 
 import (
 	"database/sql"
-	"enroller/pkg/scep/crypto"
 	"errors"
 	"fmt"
 	"strconv"
 	"time"
+
+	"github.com/lamassuiot/enroller/pkg/scep/crypto"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"

@@ -3,13 +3,14 @@ package api
 import (
 	"bytes"
 	"context"
-	"enroller/pkg/scep/configs"
-	"enroller/pkg/scep/crypto"
-	"enroller/pkg/scep/models/db"
 	"fmt"
 	"math/big"
 	"testing"
 	"time"
+
+	"github.com/lamassuiot/enroller/pkg/scep/configs"
+	"github.com/lamassuiot/enroller/pkg/scep/crypto"
+	"github.com/lamassuiot/enroller/pkg/scep/models/db"
 
 	"github.com/go-kit/kit/log"
 )

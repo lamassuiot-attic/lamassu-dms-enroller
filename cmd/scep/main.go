@@ -1,16 +1,17 @@
 package main
 
 import (
-	"enroller/pkg/scep/api"
-	"enroller/pkg/scep/auth"
-	"enroller/pkg/scep/configs"
-	"enroller/pkg/scep/discovery/consul"
-	"enroller/pkg/scep/models/db"
 	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/lamassuiot/enroller/pkg/scep/api"
+	"github.com/lamassuiot/enroller/pkg/scep/auth"
+	"github.com/lamassuiot/enroller/pkg/scep/configs"
+	"github.com/lamassuiot/enroller/pkg/scep/discovery/consul"
+	"github.com/lamassuiot/enroller/pkg/scep/models/db"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"

@@ -3,10 +3,11 @@ package auth
 import (
 	"crypto/tls"
 	"encoding/json"
-	"enroller/pkg/ca/utils"
-	"enroller/pkg/enroller/crypto"
 	"errors"
 	"net/http"
+
+	"github.com/lamassuiot/enroller/pkg/ca/utils"
+	"github.com/lamassuiot/enroller/pkg/enroller/crypto"
 
 	stdjwt "github.com/dgrijalva/jwt-go"
 )

@@ -1,6 +1,6 @@
 package store
 
-import "enroller/pkg/enroller/models/csr"
+import "github.com/lamassuiot/enroller/pkg/enroller/models/csr"
 
 type DB interface {
 	Insert(c csr.CSR) (int, error)

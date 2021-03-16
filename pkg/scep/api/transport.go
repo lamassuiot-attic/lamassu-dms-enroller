@@ -3,9 +3,10 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"enroller/pkg/scep/auth"
-	"enroller/pkg/scep/crypto"
 	"net/http"
+
+	"github.com/lamassuiot/enroller/pkg/scep/auth"
+	"github.com/lamassuiot/enroller/pkg/scep/crypto"
 
 	"github.com/gorilla/mux"
 

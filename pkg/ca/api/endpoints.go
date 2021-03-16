@@ -2,7 +2,8 @@ package api
 
 import (
 	"context"
-	"enroller/pkg/ca/secrets"
+
+	"github.com/lamassuiot/enroller/pkg/ca/secrets"
 
 	"github.com/go-kit/kit/endpoint"
 	"github.com/go-kit/kit/tracing/opentracing"

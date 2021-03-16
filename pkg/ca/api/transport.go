@@ -3,9 +3,10 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"enroller/pkg/enroller/auth"
 	"errors"
 	"net/http"
+
+	"github.com/lamassuiot/enroller/pkg/enroller/auth"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/tracing/opentracing"

@@ -2,8 +2,9 @@ package api
 
 import (
 	"context"
-	"enroller/pkg/ca/secrets"
 	"time"
+
+	"github.com/lamassuiot/enroller/pkg/ca/secrets"
 
 	"github.com/go-kit/kit/log"
 )

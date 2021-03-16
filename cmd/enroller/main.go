@@ -1,20 +1,21 @@
 package main
 
 import (
-	"enroller/pkg/enroller/api"
-	"enroller/pkg/enroller/auth"
-	"enroller/pkg/enroller/configs"
-	"enroller/pkg/enroller/discovery/consul"
-	certsdb "enroller/pkg/enroller/models/certs/store/db"
-	certsfile "enroller/pkg/enroller/models/certs/store/file"
-	csrdb "enroller/pkg/enroller/models/csr/store/db"
-	csrfile "enroller/pkg/enroller/models/csr/store/file"
-	secrets "enroller/pkg/enroller/secrets/file"
 	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/lamassuiot/enroller/pkg/enroller/api"
+	"github.com/lamassuiot/enroller/pkg/enroller/auth"
+	"github.com/lamassuiot/enroller/pkg/enroller/configs"
+	"github.com/lamassuiot/enroller/pkg/enroller/discovery/consul"
+	certsdb "github.com/lamassuiot/enroller/pkg/enroller/models/certs/store/db"
+	certsfile "github.com/lamassuiot/enroller/pkg/enroller/models/certs/store/file"
+	csrdb "github.com/lamassuiot/enroller/pkg/enroller/models/csr/store/db"
+	csrfile "github.com/lamassuiot/enroller/pkg/enroller/models/csr/store/file"
+	secrets "github.com/lamassuiot/enroller/pkg/enroller/secrets/file"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"

@@ -2,9 +2,10 @@ package api
 
 import (
 	"context"
-	"enroller/pkg/ca/secrets"
 	"errors"
 	"sync"
+
+	"github.com/lamassuiot/enroller/pkg/ca/secrets"
 )
 
 type Service interface {

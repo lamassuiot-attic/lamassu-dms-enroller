@@ -5,12 +5,13 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
-	"enroller/pkg/enroller/crypto"
-	certstore "enroller/pkg/enroller/models/certs/store"
-	"enroller/pkg/enroller/secrets"
 	"fmt"
 	"io/ioutil"
 	"time"
+
+	"github.com/lamassuiot/enroller/pkg/enroller/crypto"
+	certstore "github.com/lamassuiot/enroller/pkg/enroller/models/certs/store"
+	"github.com/lamassuiot/enroller/pkg/enroller/secrets"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"

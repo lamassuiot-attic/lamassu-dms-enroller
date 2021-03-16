@@ -2,10 +2,11 @@ package db
 
 import (
 	"database/sql"
-	"enroller/pkg/enroller/models/csr"
-	"enroller/pkg/enroller/models/csr/store"
 	"errors"
 	"strconv"
+
+	"github.com/lamassuiot/enroller/pkg/enroller/models/csr"
+	"github.com/lamassuiot/enroller/pkg/enroller/models/csr/store"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"

@@ -2,7 +2,8 @@ package api
 
 import (
 	"context"
-	"enroller/pkg/enroller/models/csr"
+
+	"github.com/lamassuiot/enroller/pkg/enroller/models/csr"
 
 	"github.com/go-kit/kit/endpoint"
 	"github.com/go-kit/kit/tracing/opentracing"

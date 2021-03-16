@@ -5,11 +5,12 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
-	"enroller/pkg/ca/secrets"
 	"errors"
 	"net"
 	"strings"
 	"testing"
+
+	"github.com/lamassuiot/enroller/pkg/ca/secrets"
 
 	"github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/builtin/logical/pki"

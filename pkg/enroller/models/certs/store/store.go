@@ -1,8 +1,9 @@
 package store
 
 import (
-	"enroller/pkg/enroller/models/certs"
 	"math/big"
+
+	"github.com/lamassuiot/enroller/pkg/enroller/models/certs"
 )
 
 type DB interface {

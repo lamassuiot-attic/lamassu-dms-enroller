@@ -1,4 +1,4 @@
-module enroller
+module github.com/lamassuiot/enroller
 
 go 1.13
 

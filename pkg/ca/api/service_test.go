@@ -2,11 +2,12 @@ package api
 
 import (
 	"context"
-	"enroller/pkg/ca/mocks"
-	"enroller/pkg/ca/secrets"
 	"fmt"
 	"net"
 	"testing"
+
+	"github.com/lamassuiot/enroller/pkg/ca/mocks"
+	"github.com/lamassuiot/enroller/pkg/ca/secrets"
 )
 
 type serviceSetUp struct {
