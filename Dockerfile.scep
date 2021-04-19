@@ -1,0 +1,3 @@
+FROM scratch
+ADD ./build/scep /
+CMD ["/scep"]

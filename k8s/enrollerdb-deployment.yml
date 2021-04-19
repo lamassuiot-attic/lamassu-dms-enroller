@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: enrollerdb
+  labels:
+    app: enrollerdb
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: enrollerdb
+  template:
+    metadata:
+      labels:
+        app: enrollerdb
+    spec:
+      containers:
+        - name: enrollerdb
+          image: postgres:latest
+          ports:
+            - containerPort: 5432
+          volumeMounts:
+            - name: enroller-db-config
+              mountPath: /docker-entrypoint-initdb.d
+            - name: enrollerdb-data
+              mountPath: /var/lib/postgresql/data
+          env:
+            - name: POSTGRES_DB
+              value: "enroller"
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: enroller-db-secrets
+                  key: dbuser
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: enroller-db-secrets
+                  key: dbpassword
+      volumes:
+        - name: enroller-db-config
+          configMap:
+            name: enroller-db-config
+        - name: enrollerdb-data
+          hostPath:
+            path: /data/enrollerdb-data/
