@@ -1,0 +1,16 @@
+version: '3'
+
+volumes:
+  enroller_pg_data:
+
+services:
+  enrollerdb:
+    build:
+      context: https://github.com/lamassuiot/enroller.git#main
+      dockerfile: Dockerfile.enrollerdb
+    environment:
+      POSTGRES_DB: enroller
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+    volumes:
+      - 'enroller_pg_data:/var/lib/postgresql/data'
