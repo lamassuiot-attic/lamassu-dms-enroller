@@ -47,7 +47,7 @@ func MakeHTTPHandler(s Service, logger log.Logger, auth auth.Auth, otTracer stdo
 		append(options, httptransport.ServerBefore(opentracing.HTTPToContext(otTracer, "Health", logger)))...,
 	))
 
-	r.Methods("POST").Path("/v1/csrs").Handler(httptransport.NewServer(
+	r.Methods("POST").Path("/v1/csrs/{name}").Handler(httptransport.NewServer(
 		jwt.NewParser(auth.Kf, stdjwt.SigningMethodRS256, auth.KeycloakClaimsFactory)(e.PostCSREndpoint),
 		decodePostCSRRequest,
 		encodePostCSRResponse,
@@ -106,6 +106,7 @@ func decodeHealthRequest(ctx context.Context, r *http.Request) (request interfac
 
 func decodePostCSRRequest(ctx context.Context, r *http.Request) (request interface{}, err error) {
 	contentType := r.Header.Get("Content-Type")
+	vars := mux.Vars(r)
 	if contentType != "application/pkcs10" {
 		return nil, ErrIncorrectType
 	}
@@ -113,8 +114,13 @@ func decodePostCSRRequest(ctx context.Context, r *http.Request) (request interfa
 	if err != nil {
 		return nil, ErrEmptyBody
 	}
+	name, ok := vars["name"]
+	if !ok {
+		return nil, ErrEmptyDMSName
+	}
 	req := postCSRRequest{
-		data: data,
+		data:    data,
+		dmsName: name,
 	}
 	return req, nil
 

@@ -27,7 +27,7 @@ import (
 
 type Service interface {
 	Health(ctx context.Context) bool
-	PostCSR(ctx context.Context, data []byte) (csrmodel.CSR, error)
+	PostCSR(ctx context.Context, data []byte, dmsName string) (csrmodel.CSR, error)
 	GetPendingCSRs(ctx context.Context) csrmodel.CSRs
 	GetPendingCSRDB(ctx context.Context, id int) (csrmodel.CSR, error)
 	GetPendingCSRFile(ctx context.Context, id int) ([]byte, error)
@@ -56,6 +56,7 @@ var (
 	ErrInvalidDenyOp    = errors.New("invalid operation, only pending status CSRs can be denied")            //400
 	ErrInvalidDeleteOp  = errors.New("invalid operation, only denied or revoked status CSRs can be deleted") //400
 	ErrIncorrectType    = errors.New("unsupported media type")                                               //415
+	ErrEmptyDMSName     = errors.New("empty DMS name")                                                       //415
 	ErrEmptyBody        = errors.New("empty body")
 
 	//Server errors
@@ -86,11 +87,12 @@ func (s *enrollerService) Health(ctx context.Context) bool {
 	return true
 }
 
-func (s *enrollerService) PostCSR(ctx context.Context, data []byte) (csrmodel.CSR, error) {
+func (s *enrollerService) PostCSR(ctx context.Context, data []byte, dmsName string) (csrmodel.CSR, error) {
 	csr, err := parseCSRDataModel(data)
 	if err != nil {
 		return csrmodel.CSR{}, err
 	}
+	csr.Name = dmsName
 	csr, err = s.insertCSRInDB(csr)
 	if err != nil {
 		return csrmodel.CSR{}, err
@@ -189,7 +191,7 @@ func (s *enrollerService) PutChangeCSRStatus(ctx context.Context, csr csrmodel.C
 	}
 
 	switch status := csr.Status; status {
-	case csrmodel.ApprobedStatus:
+	case csrmodel.ApprovedStatus:
 		if prevCSR.Status == csrmodel.PendingStatus {
 			err = s.approbeCSR(id, csr)
 			if err != nil {
@@ -199,7 +201,7 @@ func (s *enrollerService) PutChangeCSRStatus(ctx context.Context, csr csrmodel.C
 			return csrmodel.CSR{}, ErrInvalidApprobeOp
 		}
 	case csrmodel.RevokedStatus:
-		if prevCSR.Status == csrmodel.ApprobedStatus {
+		if prevCSR.Status == csrmodel.ApprovedStatus {
 			_, err = s.csrDBStore.UpdateByID(id, csr)
 			if err != nil {
 				return csrmodel.CSR{}, ErrUpdateCSR

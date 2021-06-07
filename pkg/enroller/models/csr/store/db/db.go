@@ -43,11 +43,11 @@ func checkDBAlive(db *sql.DB) error {
 func (db *DB) Insert(c csr.CSR) (int, error) {
 	id := 0
 	sqlStatement := `
-	INSERT INTO csr_store(c, st, l, o, ou, email, cn, status, csrPath)
-	VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)
+	INSERT INTO csr_store(name, country, state, locality, organization, organization_unit, email, common_name, status, csrPath)
+	VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 	RETURNING id;
 	`
-	err := db.QueryRow(sqlStatement, c.CountryName, c.StateOrProvinceName, c.LocalityName, c.OrganizationName, c.OrganizationalUnitName, c.EmailAddress, c.CommonName, c.Status, c.CsrFilePath).Scan(&id)
+	err := db.QueryRow(sqlStatement, c.Name, c.CountryName, c.StateOrProvinceName, c.LocalityName, c.OrganizationName, c.OrganizationalUnitName, c.EmailAddress, c.CommonName, c.Status, c.CsrFilePath).Scan(&id)
 	if err != nil {
 		level.Error(db.logger).Log("err", err, "msg", "Could not insert CSR with CN "+c.CommonName+" in database")
 		return -1, err
@@ -71,7 +71,7 @@ func (db *DB) SelectAll() csr.CSRs {
 
 	for rows.Next() {
 		var c csr.CSR
-		err := rows.Scan(&c.Id, &c.CountryName, &c.StateOrProvinceName, &c.LocalityName, &c.OrganizationName, &c.OrganizationalUnitName, &c.CommonName, &c.EmailAddress, &c.Status, &c.CsrFilePath)
+		err := rows.Scan(&c.Id, &c.Name, &c.CountryName, &c.StateOrProvinceName, &c.LocalityName, &c.OrganizationName, &c.OrganizationalUnitName, &c.CommonName, &c.EmailAddress, &c.Status, &c.CsrFilePath)
 		if err != nil {
 			level.Error(db.logger).Log("err", err, "msg", "Unable to read database CSR row")
 			return csr.CSRs{CSRs: []csr.CSR{}}
@@ -91,7 +91,7 @@ func (db *DB) SelectAllByCN(cn string) csr.CSRs {
 	sqlStatement := `
 	SELECT * 
 	FROM csr_store
-	WHERE cn = $1;
+	WHERE common_name = $1;
 	`
 	rows, err := db.Query(sqlStatement, cn)
 	if err != nil {
@@ -103,7 +103,7 @@ func (db *DB) SelectAllByCN(cn string) csr.CSRs {
 
 	for rows.Next() {
 		var c csr.CSR
-		err := rows.Scan(&c.Id, &c.CountryName, &c.StateOrProvinceName, &c.LocalityName, &c.OrganizationName, &c.OrganizationalUnitName, &c.CommonName, &c.EmailAddress, &c.Status, &c.CsrFilePath)
+		err := rows.Scan(&c.Id, &c.Name, &c.CountryName, &c.StateOrProvinceName, &c.LocalityName, &c.OrganizationName, &c.OrganizationalUnitName, &c.CommonName, &c.EmailAddress, &c.Status, &c.CsrFilePath)
 		if err != nil {
 			level.Error(db.logger).Log("err", err, "msg", "Unable to read database CSR for CN "+cn)
 			return csr.CSRs{CSRs: []csr.CSR{}}
@@ -134,7 +134,7 @@ func (db *DB) SelectByStatus(status string) csr.CSRs {
 
 	for rows.Next() {
 		var c csr.CSR
-		err := rows.Scan(&c.Id, &c.CountryName, &c.StateOrProvinceName, &c.LocalityName, &c.OrganizationName, &c.OrganizationalUnitName, &c.CommonName, &c.EmailAddress, &c.Status, &c.CsrFilePath)
+		err := rows.Scan(&c.Id, &c.Name, &c.CountryName, &c.StateOrProvinceName, &c.LocalityName, &c.OrganizationName, &c.OrganizationalUnitName, &c.CommonName, &c.EmailAddress, &c.Status, &c.CsrFilePath)
 		if err != nil {
 			level.Error(db.logger).Log("err", err, "msg", "Unable to read database CSR with status "+status)
 			return csr.CSRs{CSRs: []csr.CSR{}}
@@ -158,7 +158,7 @@ func (db *DB) SelectByID(id int) (csr.CSR, error) {
 	`
 	row := db.QueryRow(sqlStatement, id)
 	var c csr.CSR
-	err := row.Scan(&c.Id, &c.CountryName, &c.StateOrProvinceName, &c.LocalityName, &c.OrganizationName, &c.OrganizationalUnitName, &c.CommonName, &c.EmailAddress, &c.Status, &c.CsrFilePath)
+	err := row.Scan(&c.Id, &c.Name, &c.CountryName, &c.StateOrProvinceName, &c.LocalityName, &c.OrganizationName, &c.OrganizationalUnitName, &c.CommonName, &c.EmailAddress, &c.Status, &c.CsrFilePath)
 	if err != nil {
 		level.Error(db.logger).Log("err", err, "msg", "Could not obtain CSR with ID "+strconv.Itoa(id)+" from database")
 		return csr.CSR{}, err

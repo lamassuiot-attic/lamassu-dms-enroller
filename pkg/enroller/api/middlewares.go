@@ -36,16 +36,17 @@ func (mw loggingMiddleware) Health(ctx context.Context) (healthy bool) {
 	return mw.next.Health(ctx)
 }
 
-func (mw loggingMiddleware) PostCSR(ctx context.Context, data []byte) (csr csr.CSR, err error) {
+func (mw loggingMiddleware) PostCSR(ctx context.Context, data []byte, dmsName string) (csr csr.CSR, err error) {
 	defer func(begin time.Time) {
 		mw.logger.Log(
 			"method", "PostCSR",
 			"cn", csr.CommonName,
+			"dmsName", dmsName,
 			"took", time.Since(begin),
 			"err", err,
 		)
 	}(time.Now())
-	return mw.next.PostCSR(ctx, data)
+	return mw.next.PostCSR(ctx, data, dmsName)
 }
 
 func (mw loggingMiddleware) GetPendingCSRs(ctx context.Context) (csrs csr.CSRs) {
