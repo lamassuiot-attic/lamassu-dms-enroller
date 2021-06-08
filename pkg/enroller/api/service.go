@@ -3,8 +3,15 @@ package api
 import (
 	"bytes"
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/rsa"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"database/sql"
+	"encoding/asn1"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"os"
@@ -28,6 +35,7 @@ import (
 type Service interface {
 	Health(ctx context.Context) bool
 	PostCSR(ctx context.Context, data []byte, dmsName string) (csrmodel.CSR, error)
+	PostCSRForm(ctx context.Context, csrForm csrmodel.CSRForm) (string, csrmodel.CSR, error)
 	GetPendingCSRs(ctx context.Context) csrmodel.CSRs
 	GetPendingCSRDB(ctx context.Context, id int) (csrmodel.CSR, error)
 	GetPendingCSRFile(ctx context.Context, id int) ([]byte, error)
@@ -102,6 +110,105 @@ func (s *enrollerService) PostCSR(ctx context.Context, data []byte, dmsName stri
 		return csrmodel.CSR{}, err
 	}
 	return csr, nil
+}
+
+func (s *enrollerService) PostCSRForm(ctx context.Context, csrForm csr.CSRForm) (string, csrmodel.CSR, error) {
+	if csrForm.KeyType == "rsa" {
+		privKey, _ := rsa.GenerateKey(rand.Reader, csrForm.KeyBits)
+		csrBytes, err := _generateCSR(ctx, csrForm.KeyType, privKey, csrForm)
+		if err != nil {
+			return "", csrmodel.CSR{}, err
+		}
+
+		csrEncoded := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE REQUEST", Bytes: csrBytes})
+
+		privkey_bytes := x509.MarshalPKCS1PrivateKey(privKey)
+		privkey_pem := string(pem.EncodeToMemory(
+			&pem.Block{
+				Type:  "RSA PRIVATE KEY",
+				Bytes: privkey_bytes,
+			},
+		))
+
+		csr, err := s.PostCSR(ctx, []byte(csrEncoded), csrForm.Name)
+		if err != nil {
+			return "", csrmodel.CSR{}, err
+		} else {
+			return privkey_pem, csr, nil
+		}
+	} else if csrForm.KeyType == "ecdsa" {
+		var priv *ecdsa.PrivateKey
+		var err error
+		switch csrForm.KeyBits {
+		case 224:
+			priv, err = ecdsa.GenerateKey(elliptic.P224(), rand.Reader)
+		case 256:
+			priv, err = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		case 384:
+			priv, err = ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
+		case 521:
+			priv, err = ecdsa.GenerateKey(elliptic.P521(), rand.Reader)
+		default:
+			err = errors.New("Unsupported key length")
+		}
+		if err != nil {
+			return "", csrmodel.CSR{}, err
+		}
+		privkey_bytesm, err := x509.MarshalECPrivateKey(priv)
+		if err != nil {
+			return "", csrmodel.CSR{}, err
+		}
+		privkey_pem := string(pem.EncodeToMemory(
+			&pem.Block{
+				Type:  "PRIVATE KEY",
+				Bytes: privkey_bytesm,
+			},
+		))
+		csrBytes, err := _generateCSR(ctx, csrForm.KeyType, priv, csrForm)
+		if err != nil {
+			return "", csrmodel.CSR{}, err
+		}
+		csrEncoded := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE REQUEST", Bytes: csrBytes})
+		csr, err := s.PostCSR(ctx, []byte(csrEncoded), csrForm.Name)
+		if err != nil {
+			return "", csrmodel.CSR{}, err
+		} else {
+			return privkey_pem, csr, nil
+		}
+	} else {
+		return "", csrmodel.CSR{}, errors.New("Invalid key format")
+	}
+}
+
+func _generateCSR(ctx context.Context, keyType string, priv interface{}, csrForm csr.CSRForm) ([]byte, error) {
+	var signingAlgorithm x509.SignatureAlgorithm
+	if keyType == "ecdsa" {
+		signingAlgorithm = x509.ECDSAWithSHA256
+	} else {
+		signingAlgorithm = x509.SHA256WithRSA
+
+	}
+	//emailAddress := csrForm.EmailAddress
+	subj := pkix.Name{
+		CommonName:         csrForm.CommonName,
+		Country:            []string{csrForm.CountryName},
+		Province:           []string{csrForm.StateOrProvinceName},
+		Locality:           []string{csrForm.LocalityName},
+		Organization:       []string{csrForm.OrganizationName},
+		OrganizationalUnit: []string{csrForm.OrganizationalUnitName},
+	}
+	rawSubj := subj.ToRDNSequence()
+	/*rawSubj = append(rawSubj, []pkix.AttributeTypeAndValue{
+		{Type: oidEmailAddress, Value: emailAddress},
+	})*/
+	asn1Subj, _ := asn1.Marshal(rawSubj)
+	template := x509.CertificateRequest{
+		RawSubject: asn1Subj,
+		//EmailAddresses:     []string{emailAddress},
+		SignatureAlgorithm: signingAlgorithm,
+	}
+	csrBytes, err := x509.CreateCertificateRequest(rand.Reader, &template, priv)
+	return csrBytes, err
 }
 
 func parseCSRDataModel(data []byte) (csrmodel.CSR, error) {

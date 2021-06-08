@@ -46,6 +46,16 @@ func (mw *instrumentingMiddleware) PostCSR(ctx context.Context, data []byte, dms
 	return mw.next.PostCSR(ctx, data, dmsName)
 }
 
+func (mw *instrumentingMiddleware) PostCSRForm(ctx context.Context, csrForm csrmodel.CSRForm) (str string, csr csrmodel.CSR, err error) {
+	defer func(begin time.Time) {
+		lvs := []string{"method", "PostCSRForm", "error", fmt.Sprint(err != nil)}
+		mw.requestCount.With(lvs...).Add(1)
+		mw.requestLatency.With(lvs...).Observe(time.Since(begin).Seconds())
+	}(time.Now())
+
+	return mw.next.PostCSRForm(ctx, csrForm)
+}
+
 func (mw *instrumentingMiddleware) GetPendingCSRs(ctx context.Context) csrmodel.CSRs {
 	defer func(begin time.Time) {
 		lvs := []string{"method", "GetPendingCSRs", "error", "false"}

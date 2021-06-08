@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -52,6 +53,12 @@ func MakeHTTPHandler(s Service, logger log.Logger, auth auth.Auth, otTracer stdo
 		decodePostCSRRequest,
 		encodePostCSRResponse,
 		append(options, httptransport.ServerBefore(opentracing.HTTPToContext(otTracer, "PostCSR", logger)))...,
+	))
+	r.Methods("POST").Path("/v1/csrs/{name}/form").Handler(httptransport.NewServer(
+		jwt.NewParser(auth.Kf, stdjwt.SigningMethodRS256, auth.KeycloakClaimsFactory)(e.PostCSRFormEndpoint),
+		decodePostCSRFormRequest,
+		encodeResponse,
+		append(options, httptransport.ServerBefore(opentracing.HTTPToContext(otTracer, "PostCSRForm", logger)))...,
 	))
 
 	r.Methods("GET").Path("/v1/csrs").Handler(httptransport.NewServer(
@@ -104,6 +111,24 @@ func decodeHealthRequest(ctx context.Context, r *http.Request) (request interfac
 	return req, nil
 }
 
+func decodePostCSRFormRequest(ctx context.Context, r *http.Request) (request interface{}, err error) {
+	vars := mux.Vars(r)
+	name, ok := vars["name"]
+	if !ok {
+		return nil, ErrEmptyDMSName
+	}
+	var csrForm csr.CSRForm
+	json.NewDecoder(r.Body).Decode((&csrForm))
+	if err != nil {
+		return nil, errors.New("Cannot decode JSON request")
+	}
+	csrForm.Name = name
+	req := postCSRFormRequest{
+		CSRForm: csrForm,
+	}
+	return req, nil
+}
+
 func decodePostCSRRequest(ctx context.Context, r *http.Request) (request interface{}, err error) {
 	contentType := r.Header.Get("Content-Type")
 	vars := mux.Vars(r)
@@ -123,7 +148,6 @@ func decodePostCSRRequest(ctx context.Context, r *http.Request) (request interfa
 		dmsName: name,
 	}
 	return req, nil
-
 }
 
 func decodeGetPendingCSRsRequest(ctx context.Context, r *http.Request) (request interface{}, err error) {

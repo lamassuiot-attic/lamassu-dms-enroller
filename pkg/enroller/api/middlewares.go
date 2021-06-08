@@ -49,6 +49,19 @@ func (mw loggingMiddleware) PostCSR(ctx context.Context, data []byte, dmsName st
 	return mw.next.PostCSR(ctx, data, dmsName)
 }
 
+func (mw loggingMiddleware) PostCSRForm(ctx context.Context, csrForm csr.CSRForm) (str string, csr csr.CSR, err error) {
+	defer func(begin time.Time) {
+		mw.logger.Log(
+			"method", "PostCSRForm",
+			"cn", csr.CommonName,
+			"dmsName", csr.Name,
+			"took", time.Since(begin),
+			"err", err,
+		)
+	}(time.Now())
+	return mw.next.PostCSRForm(ctx, csrForm)
+}
+
 func (mw loggingMiddleware) GetPendingCSRs(ctx context.Context) (csrs csr.CSRs) {
 	defer func(begin time.Time) {
 		mw.logger.Log(
