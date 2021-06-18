@@ -14,5 +14,15 @@
             "env": {},
             "args": []
         },
+        {
+            "name": "Launch-Enroller-Devices",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "envFile": "${workspaceFolder}/.env",
+            "program": "${workspaceFolder}/cmd/devices/main.go",
+            "env": {},
+            "args": []
+        },
     ]
 }

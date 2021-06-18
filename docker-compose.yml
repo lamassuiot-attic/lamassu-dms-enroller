@@ -2,6 +2,7 @@ version: '3'
 
 volumes:
   enroller_pg_data:
+  devices_pg_data:
 
 services:
   enrollerdb:
@@ -12,5 +13,20 @@ services:
       POSTGRES_DB: enroller
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: admin
+    ports: 
+      - 5432:5432
     volumes:
       - 'enroller_pg_data:/var/lib/postgresql/data'
+
+  devicesdb:
+    build:
+      context: .
+      dockerfile: Dockerfile.devicesdb
+    environment:
+      POSTGRES_DB: devices
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+    volumes:
+      - 'devices_pg_data:/var/lib/postgresql/data'
+    ports: 
+      - 5433:5432
