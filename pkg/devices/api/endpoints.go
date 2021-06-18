@@ -14,10 +14,12 @@ type Endpoints struct {
 	HealthEndpoint     endpoint.Endpoint
 	PostDeviceEndpoint endpoint.Endpoint
 	GetDevices         endpoint.Endpoint
+	GetDeviceById      endpoint.Endpoint
 	GetDevicesByDMS    endpoint.Endpoint
 	DeleteDevice       endpoint.Endpoint
 	PostIssue          endpoint.Endpoint
 	DeleteRevoke       endpoint.Endpoint
+	GetDeviceLogs      endpoint.Endpoint
 }
 
 func MakeServerEndpoints(s Service, otTracer stdopentracing.Tracer) Endpoints {
@@ -35,6 +37,11 @@ func MakeServerEndpoints(s Service, otTracer stdopentracing.Tracer) Endpoints {
 	{
 		getDevicesEndpoint = MakeGetDevicesEndpoint(s)
 		getDevicesEndpoint = opentracing.TraceServer(otTracer, "GetDevices")(getDevicesEndpoint)
+	}
+	var getDevicesByIdEndpoint endpoint.Endpoint
+	{
+		getDevicesByIdEndpoint = MakeGetDeviceByIdEndpoint(s)
+		getDevicesByIdEndpoint = opentracing.TraceServer(otTracer, "GetDeviceById")(getDevicesByIdEndpoint)
 	}
 	var getDevicesByDMSEndpoint endpoint.Endpoint
 	{
@@ -54,17 +61,24 @@ func MakeServerEndpoints(s Service, otTracer stdopentracing.Tracer) Endpoints {
 	var deleteRevokeEndpoint endpoint.Endpoint
 	{
 		deleteRevokeEndpoint = MakeDeleteRevokeEndpoint(s)
-		deleteRevokeEndpoint = opentracing.TraceServer(otTracer, "deleteRevokeEndpoint")(deleteDeviceEndpoint)
+		deleteRevokeEndpoint = opentracing.TraceServer(otTracer, "deleteRevokeEndpoint")(deleteRevokeEndpoint)
+	}
+	var getDeviceLogsEndpoint endpoint.Endpoint
+	{
+		getDeviceLogsEndpoint = MakeGetDeviceLogsEndpoint(s)
+		getDeviceLogsEndpoint = opentracing.TraceServer(otTracer, "getDeviceLogsEndpoint")(getDeviceLogsEndpoint)
 	}
 
 	return Endpoints{
 		HealthEndpoint:     healthEndpoint,
 		PostDeviceEndpoint: postDeviceEndpoint,
 		GetDevices:         getDevicesEndpoint,
+		GetDeviceById:      getDevicesByIdEndpoint,
 		GetDevicesByDMS:    getDevicesByDMSEndpoint,
 		DeleteDevice:       deleteDeviceEndpoint,
 		PostIssue:          postIssueEndpoint,
 		DeleteRevoke:       deleteRevokeEndpoint,
+		GetDeviceLogs:      getDeviceLogsEndpoint,
 	}
 }
 
@@ -87,6 +101,13 @@ func MakeGetDevicesEndpoint(s Service) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
 		devices, e := s.GetDevices(ctx)
 		return devices.Devices, e
+	}
+}
+func MakeGetDeviceByIdEndpoint(s Service) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
+		req := request.(getDevicesByIdRequest)
+		device, e := s.GetDeviceById(ctx, req.Id)
+		return device, e
 	}
 }
 func MakeGetDevicesByDMSEndpoint(s Service) endpoint.Endpoint {
@@ -121,6 +142,13 @@ func MakeDeleteRevokeEndpoint(s Service) endpoint.Endpoint {
 		return nil, e
 	}
 }
+func MakeGetDeviceLogsEndpoint(s Service) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
+		req := request.(getDeviceLogsRequest)
+		logs, e := s.GetDeviceLogs(ctx, req.Id)
+		return logs.Logs, e
+	}
+}
 
 type healthRequest struct{}
 
@@ -145,6 +173,9 @@ type getDevicesResponse struct {
 	Err     error           `json:"err,omitempty"`
 }
 
+type getDevicesByIdRequest struct {
+	Id string
+}
 type getDevicesByDMSRequest struct {
 	Id string
 }
@@ -155,5 +186,8 @@ type postIssueRequest struct {
 	Id string
 }
 type deleteRevokeRequest struct {
+	Id string
+}
+type getDeviceLogsRequest struct {
 	Id string
 }

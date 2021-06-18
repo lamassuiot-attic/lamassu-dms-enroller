@@ -62,6 +62,19 @@ func (mw loggingMiddleware) GetDevices(ctx context.Context) (deviceResp devicesM
 	return mw.next.GetDevices(ctx)
 }
 
+func (mw loggingMiddleware) GetDeviceById(ctx context.Context, deviceId string) (deviceResp devicesModel.Device, err error) {
+	defer func(begin time.Time) {
+		mw.logger.Log(
+			"method", "GetDeviceById",
+			"deviceId", deviceId,
+			"deviceResp", deviceResp,
+			"took", time.Since(begin),
+			"err", err,
+		)
+	}(time.Now())
+	return mw.next.GetDeviceById(ctx, deviceId)
+}
+
 func (mw loggingMiddleware) GetDevicesByDMS(ctx context.Context, dmsId string) (deviceResp devicesModel.Devices, err error) {
 	defer func(begin time.Time) {
 		mw.logger.Log(

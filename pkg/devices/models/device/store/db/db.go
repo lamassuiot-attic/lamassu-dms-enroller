@@ -44,8 +44,8 @@ func checkDBAlive(db *sql.DB) error {
 func (db *DB) InsertDevice(dev device.Device) error {
 
 	sqlStatement := `
-	INSERT INTO device_information(id, alias, status, dms_id,country, state ,locality ,organization ,organization_unit, common_name, key_type, key_bits, creation_ts)
-	VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+	INSERT INTO device_information(id, alias, status, dms_id,country, state ,locality ,organization ,organization_unit, common_name, key_type, key_bits, key_stregnth, creation_ts)
+	VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 	RETURNING id;
 	`
 	var id string
@@ -62,6 +62,7 @@ func (db *DB) InsertDevice(dev device.Device) error {
 		dev.CommonName,
 		dev.KeyType,
 		dev.KeyBits,
+		dev.KeyStrength,
 		time.Now(),
 	).Scan(&id)
 	if err != nil {
@@ -83,10 +84,10 @@ func (db *DB) SelectAllDevices() (device.Devices, error) {
 	}
 	defer rows.Close()
 
-	var devices []device.Device
+	devices := make([]device.Device, 0)
 	for rows.Next() {
 		var dev device.Device
-		err := rows.Scan(&dev.Id, &dev.Alias, &dev.Status, &dev.DmsId, &dev.Country, &dev.State, &dev.Locality, &dev.Organization, &dev.OrganizationUnit, &dev.CommonName, &dev.KeyType, &dev.KeyBits, &dev.CreationTimestamp)
+		err := rows.Scan(&dev.Id, &dev.Alias, &dev.Status, &dev.DmsId, &dev.Country, &dev.State, &dev.Locality, &dev.Organization, &dev.OrganizationUnit, &dev.CommonName, &dev.KeyStrength, &dev.KeyType, &dev.KeyBits, &dev.CreationTimestamp)
 		if err != nil {
 			level.Error(db.logger).Log("err", err, "msg", "Unable to read database Device row")
 			return device.Devices{}, err
@@ -104,7 +105,7 @@ func (db *DB) SelectDeviceById(id string) (device.Device, error) {
 	`
 	var dev device.Device
 	err := db.QueryRow(sqlStatement, id).Scan(
-		&dev.Id, &dev.Alias, &dev.Status, &dev.DmsId, &dev.Country, &dev.State, &dev.Locality, &dev.Organization, &dev.OrganizationUnit, &dev.CommonName, &dev.KeyType, &dev.KeyBits, &dev.CreationTimestamp,
+		&dev.Id, &dev.Alias, &dev.Status, &dev.DmsId, &dev.Country, &dev.State, &dev.Locality, &dev.Organization, &dev.OrganizationUnit, &dev.CommonName, &dev.KeyStrength, &dev.KeyType, &dev.KeyBits, &dev.CreationTimestamp,
 	)
 
 	if err != nil {
@@ -129,7 +130,7 @@ func (db *DB) SelectAllDevicesByDmsId(dms_id string) (device.Devices, error) {
 	var devices []device.Device
 	for rows.Next() {
 		var dev device.Device
-		err := rows.Scan(&dev.Id, &dev.Alias, &dev.Status, &dev.DmsId, &dev.Country, &dev.State, &dev.Locality, &dev.Organization, &dev.OrganizationUnit, &dev.CommonName, &dev.KeyType, &dev.KeyBits, &dev.CreationTimestamp)
+		err := rows.Scan(&dev.Id, &dev.Alias, &dev.Status, &dev.DmsId, &dev.Country, &dev.State, &dev.Locality, &dev.Organization, &dev.OrganizationUnit, &dev.CommonName, &dev.KeyStrength, &dev.KeyType, &dev.KeyBits, &dev.CreationTimestamp)
 		if err != nil {
 			level.Error(db.logger).Log("err", err, "msg", "Unable to read database Device row")
 			return device.Devices{}, err

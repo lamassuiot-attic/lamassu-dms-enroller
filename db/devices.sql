@@ -9,6 +9,7 @@ CREATE TABLE device_information (
     organization TEXT,
     organization_unit TEXT,
     common_name TEXT,
+    key_stregnth TEXT,
     key_type TEXT,
     key_bits int,
     creation_ts timestamp

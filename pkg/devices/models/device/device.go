@@ -13,6 +13,7 @@ type Device struct {
 	CommonName        string `json:"common_name"`
 	KeyType           string `json:"key_type"`
 	KeyBits           int    `json:"key_bits"`
+	KeyStrength       string `json:"key_strength"`
 	CreationTimestamp string `json:"creation_timestamp,omitempty"`
 }
 
@@ -46,12 +47,14 @@ type DeviceCertsHistory struct {
 
 const ( // Device status
 	DeviceCreated       = "DEVICE_CREATED"
+	DeviceProvisioned   = "PROVISIONED"
 	DeviceDecomissioned = "DEVICE_DECOMISSIONED"
 )
 
 const ( // Device Logs types
 	LogPendingProvisionStatus = "PENDING_PROVISION"
 	LogProvisionedStatus      = "PROVISIONED"
+	LogDeviceCreated          = "DEVICE_CREATED"
 )
 
 const ( // Cert History status

@@ -15,6 +15,7 @@ type Service interface {
 	Health(ctx context.Context) bool
 	PostDevice(ctx context.Context, device devicesModel.Device) (devicesModel.Device, error)
 	GetDevices(ctx context.Context) (devicesModel.Devices, error)
+	GetDeviceById(ctx context.Context, deviceId string) (devicesModel.Device, error)
 	GetDevicesByDMS(ctx context.Context, dmsId string) (devicesModel.Devices, error)
 	DeleteDevice(ctx context.Context, id string) error
 	IssueDeviceCert(ctx context.Context, id string) (string, error)
@@ -54,10 +55,31 @@ func (s *devicesService) Health(ctx context.Context) bool {
 }
 
 func (s *devicesService) PostDevice(ctx context.Context, device devicesModel.Device) (devicesModel.Device, error) {
+	device.KeyStrength = getKeyStrength(device.KeyType, device.KeyBits)
 	err := s.devicesDb.InsertDevice(device)
 	if err != nil {
 		return devicesModel.Device{}, err
 	}
+
+	log := devicesModel.DeviceLog{
+		DeviceId:   device.Id,
+		LogType:    devicesModel.LogDeviceCreated,
+		LogMessage: "",
+	}
+	err = s.devicesDb.InsertLog(log)
+	if err != nil {
+		return devicesModel.Device{}, err
+	}
+	log = devicesModel.DeviceLog{
+		DeviceId:   device.Id,
+		LogType:    devicesModel.LogPendingProvisionStatus,
+		LogMessage: "",
+	}
+	err = s.devicesDb.InsertLog(log)
+	if err != nil {
+		return devicesModel.Device{}, err
+	}
+
 	device, err = s.devicesDb.SelectDeviceById(device.Id)
 	if err != nil {
 		return devicesModel.Device{}, err
@@ -81,6 +103,14 @@ func (s *devicesService) GetDevicesByDMS(ctx context.Context, dmsId string) (dev
 	}
 
 	return devices, nil
+}
+func (s *devicesService) GetDeviceById(ctx context.Context, deviceId string) (devicesModel.Device, error) {
+	device, err := s.devicesDb.SelectDeviceById(deviceId)
+	if err != nil {
+		return devicesModel.Device{}, err
+	}
+
+	return device, nil
 }
 
 func (s *devicesService) DeleteDevice(ctx context.Context, id string) error {
@@ -130,6 +160,8 @@ func (s *devicesService) IssueDeviceCert(ctx context.Context, id string) (string
 		Status:             devicesModel.CertHistoryActive,
 	}
 	s.devicesDb.InsertDeviceCertHistory(certHistory)
+
+	//	DeviceProvisioned
 	if err != nil {
 		return "", err
 	}
@@ -165,4 +197,27 @@ func (s *devicesService) GetDeviceCertHistory(ctx context.Context, id string) (d
 		return devicesModel.DeviceCertsHistory{}, err
 	}
 	return history, nil
+}
+
+func getKeyStrength(keyType string, keyBits int) string {
+	var keyStrength string = "unknown"
+	switch keyType {
+	case "rsa":
+		if keyBits < 2048 {
+			keyStrength = "low"
+		} else if keyBits >= 2048 && keyBits < 3072 {
+			keyStrength = "medium"
+		} else {
+			keyStrength = "high"
+		}
+	case "ec":
+		if keyBits < 224 {
+			keyStrength = "low"
+		} else if keyBits >= 224 && keyBits < 256 {
+			keyStrength = "medium"
+		} else {
+			keyStrength = "high"
+		}
+	}
+	return keyStrength
 }

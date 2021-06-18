@@ -56,6 +56,17 @@ func (mw *instrumentingMiddleware) GetDevices(ctx context.Context) (device devic
 
 	return mw.next.GetDevices(ctx)
 }
+
+func (mw *instrumentingMiddleware) GetDeviceById(ctx context.Context, deviceId string) (device devicesModel.Device, err error) {
+	defer func(begin time.Time) {
+		lvs := []string{"method", "GetDeviceById", "error", fmt.Sprint(err != nil)}
+		mw.requestCount.With(lvs...).Add(1)
+		mw.requestLatency.With(lvs...).Observe(time.Since(begin).Seconds())
+	}(time.Now())
+
+	return mw.next.GetDeviceById(ctx, deviceId)
+}
+
 func (mw *instrumentingMiddleware) GetDevicesByDMS(ctx context.Context, dmsId string) (devices devicesModel.Devices, err error) {
 	defer func(begin time.Time) {
 		lvs := []string{"method", "GetDevicesByDMS", "error", fmt.Sprint(err != nil)}

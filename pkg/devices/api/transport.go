@@ -57,6 +57,13 @@ func MakeHTTPHandler(s Service, logger log.Logger, auth auth.Auth, otTracer stdo
 		append(options, httptransport.ServerBefore(opentracing.HTTPToContext(otTracer, "GetDevices", logger)))...,
 	))
 
+	r.Methods("GET").Path("/v1/devices/{deviceId}").Handler(httptransport.NewServer(
+		jwt.NewParser(auth.Kf, stdjwt.SigningMethodRS256, auth.KeycloakClaimsFactory)(e.GetDeviceById),
+		decodeGetDeviceById,
+		encodeResponse,
+		append(options, httptransport.ServerBefore(opentracing.HTTPToContext(otTracer, "GetDeviceById", logger)))...,
+	))
+
 	r.Methods("GET").Path("/v1/devices/dms/{dmsId}").Handler(httptransport.NewServer(
 		jwt.NewParser(auth.Kf, stdjwt.SigningMethodRS256, auth.KeycloakClaimsFactory)(e.GetDevicesByDMS),
 		decodeGetDevicesByDMSRequest,
@@ -85,6 +92,13 @@ func MakeHTTPHandler(s Service, logger log.Logger, auth auth.Auth, otTracer stdo
 		append(options, httptransport.ServerBefore(opentracing.HTTPToContext(otTracer, "DeleteRevoke", logger)))...,
 	))
 
+	r.Methods("GET").Path("/v1/devices/{deviceId}/logs").Handler(httptransport.NewServer(
+		jwt.NewParser(auth.Kf, stdjwt.SigningMethodRS256, auth.KeycloakClaimsFactory)(e.GetDeviceLogs),
+		decodedecodeGetDeviceLogsRequest,
+		encodeResponse,
+		append(options, httptransport.ServerBefore(opentracing.HTTPToContext(otTracer, "GetDeviceLogs", logger)))...,
+	))
+
 	return r
 }
 
@@ -108,6 +122,15 @@ func decodePostDeviceRequest(ctx context.Context, r *http.Request) (request inte
 		Device: device,
 	}
 	return req, nil
+}
+
+func decodeGetDeviceById(ctx context.Context, r *http.Request) (request interface{}, err error) {
+	vars := mux.Vars(r)
+	id, ok := vars["deviceId"]
+	if !ok {
+		return nil, ErrInvalidDMSId
+	}
+	return getDevicesByIdRequest{Id: id}, nil
 }
 
 func decodeGetDevicesByDMSRequest(ctx context.Context, r *http.Request) (request interface{}, err error) {
@@ -142,6 +165,14 @@ func decodedecodeDeleteRevokeRequest(ctx context.Context, r *http.Request) (requ
 		return nil, ErrInvalidDeviceId
 	}
 	return deleteRevokeRequest{Id: id}, nil
+}
+func decodedecodeGetDeviceLogsRequest(ctx context.Context, r *http.Request) (request interface{}, err error) {
+	vars := mux.Vars(r)
+	id, ok := vars["deviceId"]
+	if !ok {
+		return nil, ErrInvalidDeviceId
+	}
+	return getDeviceLogsRequest{Id: id}, nil
 }
 
 func encodeResponse(ctx context.Context, w http.ResponseWriter, response interface{}) error {
