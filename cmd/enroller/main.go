@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/lamassuiot/enroller/pkg/enroller/api"
 	"github.com/lamassuiot/enroller/pkg/enroller/auth"
@@ -44,9 +45,11 @@ func main() {
 	csrConnStr := "dbname=" + cfg.PostgresDB + " user=" + cfg.PostgresUser + " password=" + cfg.PostgresPassword + " host=" + cfg.PostgresHostname + " port=" + cfg.PostgresPort + " sslmode=disable"
 	csrdb, err := csrdb.NewDB("postgres", csrConnStr, logger)
 	if err != nil {
-		level.Error(logger).Log("err", err, "msg", "Could not start connection with CSRs database")
+		level.Error(logger).Log("err", err, "msg", "Could not start connection with Devices database. Will sleep for 5 seconds and exit the program")
+		time.Sleep(5 * time.Second)
 		os.Exit(1)
 	}
+
 	level.Info(logger).Log("msg", "Connection established with CSRs database")
 	csrfile := csrfile.NewFile(cfg.HomePath, logger)
 	level.Info(logger).Log("msg", "CSRs filesystem home path created")
