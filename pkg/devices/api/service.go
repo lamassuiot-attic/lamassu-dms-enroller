@@ -72,7 +72,7 @@ func (s *devicesService) PostDevice(ctx context.Context, device devicesModel.Dev
 	}
 	log = devicesModel.DeviceLog{
 		DeviceId:   device.Id,
-		LogType:    devicesModel.LogPendingProvisionStatus,
+		LogType:    devicesModel.LogPendingProvision,
 		LogMessage: "",
 	}
 	err = s.devicesDb.InsertLog(log)
@@ -114,7 +114,25 @@ func (s *devicesService) GetDeviceById(ctx context.Context, deviceId string) (de
 }
 
 func (s *devicesService) DeleteDevice(ctx context.Context, id string) error {
-	err := s.devicesDb.DeleteDevice(id)
+	/*err := s.devicesDb.DeleteDevice(id)
+	if err != nil {
+		return err
+	}*/
+
+	err := s.devicesDb.UpdateDeviceStatusByID(id, devicesModel.DeviceDecomissioned)
+	if err != nil {
+		return err
+	}
+
+	log := devicesModel.DeviceLog{
+		DeviceId:   id,
+		LogType:    devicesModel.LogDeviceDecomissioned,
+		LogMessage: "",
+	}
+	err = s.devicesDb.InsertLog(log)
+	if err != nil {
+		return err
+	}
 	return err
 }
 
@@ -128,6 +146,8 @@ func (s *devicesService) IssueDeviceCert(ctx context.Context, id string) (string
 	if currentCertHistory == empty {
 		fmt.Println("Empty")
 	} else if currentCertHistory.Status == devicesModel.CertHistoryActive {
+		fmt.Println("TODO: Check if cert is expired")
+
 		// Check if cert is expired
 
 		// -> Is not Expired
@@ -144,10 +164,15 @@ func (s *devicesService) IssueDeviceCert(ctx context.Context, id string) (string
 
 	log := devicesModel.DeviceLog{
 		DeviceId:   id,
-		LogType:    devicesModel.LogProvisionedStatus,
+		LogType:    devicesModel.LogProvisioned,
 		LogMessage: "",
 	}
 	err = s.devicesDb.InsertLog(log)
+	if err != nil {
+		return "", err
+	}
+
+	err = s.devicesDb.UpdateDeviceStatusByID(id, devicesModel.DeviceProvisioned)
 	if err != nil {
 		return "", err
 	}
@@ -170,13 +195,28 @@ func (s *devicesService) IssueDeviceCert(ctx context.Context, id string) (string
 }
 
 func (s *devicesService) RevokeDeviceCert(ctx context.Context, id string) error {
-	currentCertHistory, err := s.devicesDb.SelectDeviceLastCertHistory(id)
+	/*currentCertHistory, err := s.devicesDb.SelectDeviceLastCertHistory(id)
+	if err != nil {
+		return err
+	}*/
+	// revoke
+	fmt.Println("TODO: Revoke cert ")
+	/*err = s.devicesDb.UpdateDeviceLastCertHistory(id, devicesModel.CertHistoryRevoked)
+	if err != nil {
+		return err
+	}*/
+
+	err := s.devicesDb.UpdateDeviceStatusByID(id, devicesModel.DeviceCertRevoked)
 	if err != nil {
 		return err
 	}
-	// revoke
-	fmt.Println("TODO: Revoke cert " + currentCertHistory.SerialNumber)
-	err = s.devicesDb.UpdateDeviceLastCertHistory(id, devicesModel.CertHistoryRevoked)
+
+	log := devicesModel.DeviceLog{
+		DeviceId:   id,
+		LogType:    devicesModel.LogCertRevoked,
+		LogMessage: "",
+	}
+	err = s.devicesDb.InsertLog(log)
 	if err != nil {
 		return err
 	}

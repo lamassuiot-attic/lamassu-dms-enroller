@@ -46,15 +46,20 @@ type DeviceCertsHistory struct {
 }
 
 const ( // Device status
-	DeviceCreated       = "DEVICE_CREATED"
-	DeviceProvisioned   = "PROVISIONED"
-	DeviceDecomissioned = "DEVICE_DECOMISSIONED"
+	DevicePendingProvision = "PENDING_PROVISION"
+	DeviceProvisioned      = "DEVICE_PROVISIONED"
+	DeviceCertRevoked      = "CERT_REVOKED"
+	DeviceCertExpired      = "CERT_EXPIRED"
+	DeviceDecomissioned    = "DEVICE_DECOMISSIONED"
 )
 
 const ( // Device Logs types
-	LogPendingProvisionStatus = "PENDING_PROVISION"
-	LogProvisionedStatus      = "PROVISIONED"
-	LogDeviceCreated          = "DEVICE_CREATED"
+	LogDeviceCreated       = "LOG_DEVICE_CREATED"
+	LogPendingProvision    = "LOG_PENDING_PROVISION"
+	LogProvisioned         = "LOG_PROVISIONED"
+	LogCertRevoked         = "LOG_CERT_REVOKED"
+	LogCertExpired         = "LOG_CERT_EXPIRED"
+	LogDeviceDecomissioned = "LOG_DEVICE_DECOMISSIONED"
 )
 
 const ( // Cert History status
