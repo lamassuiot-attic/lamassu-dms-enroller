@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/lamassuiot/lamassu-est/client/estclient"
 	"os"
 	"strconv"
 	"strings"
@@ -234,7 +235,6 @@ func (s *enrollerService) revokeCert(id int) error {
 		return ErrRevokeCert
 	}
 	return nil
-
 }
 
 func (s *enrollerService) approbeCSR(id int, csr csrmodel.CSR) error {
@@ -242,7 +242,8 @@ func (s *enrollerService) approbeCSR(id int, csr csrmodel.CSR) error {
 	if err != nil {
 		return err
 	}
-	crt, err := s.signCSR(csrData)
+	//crt, err := s.signCSR(csrData)
+	crt, err := estclient.Enroll(csrData)
 	if err != nil {
 		return err
 	}
