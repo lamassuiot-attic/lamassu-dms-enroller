@@ -85,14 +85,23 @@ func (mw *instrumentingMiddleware) DeleteDevice(ctx context.Context, id string) 
 
 	return mw.next.DeleteDevice(ctx, id)
 }
-func (mw *instrumentingMiddleware) IssueDeviceCert(ctx context.Context, id string) (cert string, err error) {
+func (mw *instrumentingMiddleware) IssueDeviceCert(ctx context.Context, id string, csr []byte) (cert string, err error) {
 	defer func(begin time.Time) {
 		lvs := []string{"method", "IssueDeviceCert", "error", fmt.Sprint(err != nil)}
 		mw.requestCount.With(lvs...).Add(1)
 		mw.requestLatency.With(lvs...).Observe(time.Since(begin).Seconds())
 	}(time.Now())
 
-	return mw.next.IssueDeviceCert(ctx, id)
+	return mw.next.IssueDeviceCert(ctx, id, csr)
+}
+func (mw *instrumentingMiddleware) IssueDeviceCertUsingDefaults(ctx context.Context, id string) (privKey string, cert string, err error) {
+	defer func(begin time.Time) {
+		lvs := []string{"method", "IssueDeviceCertUsingDefaults", "error", fmt.Sprint(err != nil)}
+		mw.requestCount.With(lvs...).Add(1)
+		mw.requestLatency.With(lvs...).Observe(time.Since(begin).Seconds())
+	}(time.Now())
+
+	return mw.next.IssueDeviceCertUsingDefaults(ctx, id)
 }
 func (mw *instrumentingMiddleware) RevokeDeviceCert(ctx context.Context, id string) (err error) {
 	defer func(begin time.Time) {

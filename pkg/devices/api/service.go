@@ -2,6 +2,10 @@ package api
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/asn1"
 	"errors"
 	"fmt"
 	"sync"
@@ -18,7 +22,8 @@ type Service interface {
 	GetDeviceById(ctx context.Context, deviceId string) (devicesModel.Device, error)
 	GetDevicesByDMS(ctx context.Context, dmsId string) (devicesModel.Devices, error)
 	DeleteDevice(ctx context.Context, id string) error
-	IssueDeviceCert(ctx context.Context, id string) (string, error)
+	IssueDeviceCert(ctx context.Context, id string, csrBytes []byte) (string, error)
+	IssueDeviceCertUsingDefaults(ctx context.Context, id string) (string, string, error)
 	RevokeDeviceCert(ctx context.Context, id string) error
 
 	GetDeviceLogs(ctx context.Context, id string) (devicesModel.DeviceLogs, error)
@@ -136,7 +141,81 @@ func (s *devicesService) DeleteDevice(ctx context.Context, id string) error {
 	return err
 }
 
-func (s *devicesService) IssueDeviceCert(ctx context.Context, id string) (string, error) {
+func (s *devicesService) IssueDeviceCertUsingDefaults(ctx context.Context, id string) (string, string, error) {
+	/*device, err := s.devicesDb.SelectDeviceById(id)
+	if err != nil {
+		return "", "", err
+	}
+	// Generate priv key
+	var csrBytes []byte
+	var privKeyString string
+	if device.KeyType == "rsa" {
+		privKey, _ := rsa.GenerateKey(rand.Reader, device.KeyBits)
+		csrBytes, err := _generateCSR(ctx, device.KeyType, privKey, device.CommonName, device.Country, device.State, device.Locality, device.Organization, device.OrganizationUnit)
+		if err != nil {
+			return "", "", err
+		}
+
+		csrEncoded := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE REQUEST", Bytes: csrBytes})
+
+		privkey_bytes := x509.MarshalPKCS1PrivateKey(privKey)
+		privKeyString := string(pem.EncodeToMemory(
+			&pem.Block{
+				Type:  "RSA PRIVATE KEY",
+				Bytes: privkey_bytes,
+			},
+		))
+
+	} else if device.KeyType == "ecdsa" {
+		var priv *ecdsa.PrivateKey
+		var err error
+		switch device.KeyBits {
+		case 224:
+			priv, err = ecdsa.GenerateKey(elliptic.P224(), rand.Reader)
+		case 256:
+			priv, err = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		case 384:
+			priv, err = ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
+		case 521:
+			priv, err = ecdsa.GenerateKey(elliptic.P521(), rand.Reader)
+		default:
+			err = errors.New("Unsupported key length")
+		}
+		if err != nil {
+			return "", "", err
+		}
+		privkey_bytes, err := x509.MarshalECPrivateKey(priv)
+		if err != nil {
+			return "", "", err
+		}
+		privKeyString := string(pem.EncodeToMemory(
+			&pem.Block{
+				Type:  "PRIVATE KEY",
+				Bytes: privkey_bytes,
+			},
+		))
+		csrBytes, err := _generateCSR(ctx, device.KeyType, privKeyString, device.CommonName, device.Country, device.State, device.Locality, device.Organization, device.OrganizationUnit)
+		if err != nil {
+			return "", "", nil
+		}
+		csrBytes = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE REQUEST", Bytes: csrBytes})
+	} else {
+		return "", "", errors.New("Invalid key format")
+	}
+
+	// Gen CSR
+	csrBytes, err := _generateCSR(ctx, csrForm.KeyType, privKey, csrForm)
+	if err != nil {
+		return "", "", ""
+	}
+
+
+	s.IssueDeviceCert(ctx, id, csrBytes)
+	*/
+	return "", "", nil
+}
+
+func (s *devicesService) IssueDeviceCert(ctx context.Context, id string, csrBytes []byte) (string, error) {
 	// GET LAST CERT ID & If revoked, update status to "Revoked" else return error: CANT ISSUE
 	currentCertHistory, err := s.devicesDb.SelectDeviceLastCertHistory(id)
 	if err != nil {
@@ -260,4 +339,35 @@ func getKeyStrength(keyType string, keyBits int) string {
 		}
 	}
 	return keyStrength
+}
+
+func _generateCSR(ctx context.Context, keyType string, priv interface{}, commonName string, country string, state string, locality string, org string, orgUnit string) ([]byte, error) {
+	var signingAlgorithm x509.SignatureAlgorithm
+	if keyType == "ecdsa" {
+		signingAlgorithm = x509.ECDSAWithSHA256
+	} else {
+		signingAlgorithm = x509.SHA256WithRSA
+
+	}
+	//emailAddress := csrForm.EmailAddress
+	subj := pkix.Name{
+		CommonName:         commonName,
+		Country:            []string{country},
+		Province:           []string{state},
+		Locality:           []string{locality},
+		Organization:       []string{org},
+		OrganizationalUnit: []string{orgUnit},
+	}
+	rawSubj := subj.ToRDNSequence()
+	/*rawSubj = append(rawSubj, []pkix.AttributeTypeAndValue{
+		{Type: oidEmailAddress, Value: emailAddress},
+	})*/
+	asn1Subj, _ := asn1.Marshal(rawSubj)
+	template := x509.CertificateRequest{
+		RawSubject: asn1Subj,
+		//EmailAddresses:     []string{emailAddress},
+		SignatureAlgorithm: signingAlgorithm,
+	}
+	csrBytes, err := x509.CreateCertificateRequest(rand.Reader, &template, priv)
+	return csrBytes, err
 }

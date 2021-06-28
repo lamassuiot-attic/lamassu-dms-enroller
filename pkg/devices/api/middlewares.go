@@ -100,17 +100,31 @@ func (mw loggingMiddleware) DeleteDevice(ctx context.Context, id string) (err er
 	return mw.next.DeleteDevice(ctx, id)
 }
 
-func (mw loggingMiddleware) IssueDeviceCert(ctx context.Context, id string) (cert string, err error) {
+func (mw loggingMiddleware) IssueDeviceCert(ctx context.Context, id string, csr []byte) (cert string, err error) {
 	defer func(begin time.Time) {
 		mw.logger.Log(
 			"method", "IssueDeviceCert",
+			"id", id,
+			"csr", csr,
+			"cert", cert,
+			"took", time.Since(begin),
+			"err", err,
+		)
+	}(time.Now())
+	return mw.next.IssueDeviceCert(ctx, id, csr)
+}
+
+func (mw loggingMiddleware) IssueDeviceCertUsingDefaults(ctx context.Context, id string) (privKey string, cert string, err error) {
+	defer func(begin time.Time) {
+		mw.logger.Log(
+			"method", "IssueDeviceCertUsingDefaults",
 			"id", id,
 			"cert", cert,
 			"took", time.Since(begin),
 			"err", err,
 		)
 	}(time.Now())
-	return mw.next.IssueDeviceCert(ctx, id)
+	return mw.next.IssueDeviceCertUsingDefaults(ctx, id)
 }
 
 func (mw loggingMiddleware) RevokeDeviceCert(ctx context.Context, id string) (err error) {

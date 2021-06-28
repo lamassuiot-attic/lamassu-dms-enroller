@@ -14,12 +14,13 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"github.com/lamassuiot/lamassu-est/client/estclient"
 	"os"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/lamassuiot/lamassu-est/client/estclient"
 
 	"github.com/lamassuiot/enroller/pkg/enroller/auth"
 	"github.com/lamassuiot/enroller/pkg/enroller/crypto"
@@ -116,7 +117,7 @@ func (s *enrollerService) PostCSR(ctx context.Context, data []byte, dmsName stri
 func (s *enrollerService) PostCSRForm(ctx context.Context, csrForm csr.CSRForm) (string, csrmodel.CSR, error) {
 	if csrForm.KeyType == "rsa" {
 		privKey, _ := rsa.GenerateKey(rand.Reader, csrForm.KeyBits)
-		csrBytes, err := _generateCSR(ctx, csrForm.KeyType, privKey, csrForm)
+		csrBytes, err := _generateCSR(ctx, csrForm.KeyType, csrForm.KeyBits, privKey, csrForm)
 		if err != nil {
 			return "", csrmodel.CSR{}, err
 		}
@@ -137,7 +138,7 @@ func (s *enrollerService) PostCSRForm(ctx context.Context, csrForm csr.CSRForm) 
 		} else {
 			return privkey_pem, csr, nil
 		}
-	} else if csrForm.KeyType == "ecdsa" {
+	} else if csrForm.KeyType == "ec" {
 		var priv *ecdsa.PrivateKey
 		var err error
 		switch csrForm.KeyBits {
@@ -165,7 +166,7 @@ func (s *enrollerService) PostCSRForm(ctx context.Context, csrForm csr.CSRForm) 
 				Bytes: privkey_bytesm,
 			},
 		))
-		csrBytes, err := _generateCSR(ctx, csrForm.KeyType, priv, csrForm)
+		csrBytes, err := _generateCSR(ctx, csrForm.KeyType, csrForm.KeyBits, priv, csrForm)
 		if err != nil {
 			return "", csrmodel.CSR{}, err
 		}
@@ -181,13 +182,12 @@ func (s *enrollerService) PostCSRForm(ctx context.Context, csrForm csr.CSRForm) 
 	}
 }
 
-func _generateCSR(ctx context.Context, keyType string, priv interface{}, csrForm csr.CSRForm) ([]byte, error) {
+func _generateCSR(ctx context.Context, keyType string, keyBits int, priv interface{}, csrForm csr.CSRForm) ([]byte, error) {
 	var signingAlgorithm x509.SignatureAlgorithm
-	if keyType == "ecdsa" {
-		signingAlgorithm = x509.ECDSAWithSHA256
+	if keyType == "ec" {
+		signingAlgorithm = x509.ECDSAWithSHA512
 	} else {
-		signingAlgorithm = x509.SHA256WithRSA
-
+		signingAlgorithm = x509.SHA512WithRSA
 	}
 	//emailAddress := csrForm.EmailAddress
 	subj := pkix.Name{

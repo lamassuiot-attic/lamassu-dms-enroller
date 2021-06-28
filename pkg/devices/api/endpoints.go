@@ -11,15 +11,16 @@ import (
 )
 
 type Endpoints struct {
-	HealthEndpoint     endpoint.Endpoint
-	PostDeviceEndpoint endpoint.Endpoint
-	GetDevices         endpoint.Endpoint
-	GetDeviceById      endpoint.Endpoint
-	GetDevicesByDMS    endpoint.Endpoint
-	DeleteDevice       endpoint.Endpoint
-	PostIssue          endpoint.Endpoint
-	DeleteRevoke       endpoint.Endpoint
-	GetDeviceLogs      endpoint.Endpoint
+	HealthEndpoint         endpoint.Endpoint
+	PostDeviceEndpoint     endpoint.Endpoint
+	GetDevices             endpoint.Endpoint
+	GetDeviceById          endpoint.Endpoint
+	GetDevicesByDMS        endpoint.Endpoint
+	DeleteDevice           endpoint.Endpoint
+	PostIssue              endpoint.Endpoint
+	PostIssueUsingDefaults endpoint.Endpoint
+	DeleteRevoke           endpoint.Endpoint
+	GetDeviceLogs          endpoint.Endpoint
 }
 
 func MakeServerEndpoints(s Service, otTracer stdopentracing.Tracer) Endpoints {
@@ -58,6 +59,11 @@ func MakeServerEndpoints(s Service, otTracer stdopentracing.Tracer) Endpoints {
 		postIssueEndpoint = MakePostIssueEndpoint(s)
 		postIssueEndpoint = opentracing.TraceServer(otTracer, "PostIssue")(postIssueEndpoint)
 	}
+	var postIssueUsingDefaultsEndpoint endpoint.Endpoint
+	{
+		postIssueUsingDefaultsEndpoint = MakePostIssueUsingDefaultsEndpoint(s)
+		postIssueUsingDefaultsEndpoint = opentracing.TraceServer(otTracer, "PostIssueUsingDefaults")(postIssueUsingDefaultsEndpoint)
+	}
 	var deleteRevokeEndpoint endpoint.Endpoint
 	{
 		deleteRevokeEndpoint = MakeDeleteRevokeEndpoint(s)
@@ -70,15 +76,16 @@ func MakeServerEndpoints(s Service, otTracer stdopentracing.Tracer) Endpoints {
 	}
 
 	return Endpoints{
-		HealthEndpoint:     healthEndpoint,
-		PostDeviceEndpoint: postDeviceEndpoint,
-		GetDevices:         getDevicesEndpoint,
-		GetDeviceById:      getDevicesByIdEndpoint,
-		GetDevicesByDMS:    getDevicesByDMSEndpoint,
-		DeleteDevice:       deleteDeviceEndpoint,
-		PostIssue:          postIssueEndpoint,
-		DeleteRevoke:       deleteRevokeEndpoint,
-		GetDeviceLogs:      getDeviceLogsEndpoint,
+		HealthEndpoint:         healthEndpoint,
+		PostDeviceEndpoint:     postDeviceEndpoint,
+		GetDevices:             getDevicesEndpoint,
+		GetDeviceById:          getDevicesByIdEndpoint,
+		GetDevicesByDMS:        getDevicesByDMSEndpoint,
+		DeleteDevice:           deleteDeviceEndpoint,
+		PostIssue:              postIssueEndpoint,
+		PostIssueUsingDefaults: postIssueUsingDefaultsEndpoint,
+		DeleteRevoke:           deleteRevokeEndpoint,
+		GetDeviceLogs:          getDeviceLogsEndpoint,
 	}
 }
 
@@ -128,10 +135,17 @@ func MakeDeleteDeviceEndpoint(s Service) endpoint.Endpoint {
 		}
 	}
 }
+func MakePostIssueUsingDefaultsEndpoint(s Service) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
+		req := request.(postIssueRequestUsingDefaults)
+		privKey, cert, e := s.IssueDeviceCertUsingDefaults(ctx, req.Id)
+		return postIssueCertUsingDefaultResponse{PrivKey: privKey, Crt: cert, Err: e}, nil
+	}
+}
 func MakePostIssueEndpoint(s Service) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
 		req := request.(postIssueRequest)
-		cert, e := s.IssueDeviceCert(ctx, req.Id)
+		cert, e := s.IssueDeviceCert(ctx, req.Id, req.Csr)
 		return cert, e
 	}
 }
@@ -182,8 +196,21 @@ type getDevicesByDMSRequest struct {
 type deleteDeviceRequest struct {
 	Id string
 }
-type postIssueRequest struct {
+type postIssueRequestUsingDefaults struct {
 	Id string
+}
+type postIssueRequest struct {
+	Id  string
+	Csr []byte
+}
+type postIssueCertResponse struct {
+	Crt string `json:"crt,omitempty"`
+	Err error  `json:"err,omitempty"`
+}
+type postIssueCertUsingDefaultResponse struct {
+	Crt     string `json:"crt,omitempty"`
+	PrivKey string `json:"priv_key,omitempty"`
+	Err     error  `json:"err,omitempty"`
 }
 type deleteRevokeRequest struct {
 	Id string

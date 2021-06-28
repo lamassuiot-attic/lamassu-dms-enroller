@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io/ioutil"
 	"net/http"
 
 	"github.com/lamassuiot/enroller/pkg/devices/auth"
@@ -85,6 +86,13 @@ func MakeHTTPHandler(s Service, logger log.Logger, auth auth.Auth, otTracer stdo
 		append(options, httptransport.ServerBefore(opentracing.HTTPToContext(otTracer, "PostIssue", logger)))...,
 	))
 
+	r.Methods("POST").Path("/v1/devices/{deviceId}/issue/defaults").Handler(httptransport.NewServer(
+		jwt.NewParser(auth.Kf, stdjwt.SigningMethodRS256, auth.KeycloakClaimsFactory)(e.PostIssueUsingDefaults),
+		decodePostIssueRequest,
+		encodeResponse,
+		append(options, httptransport.ServerBefore(opentracing.HTTPToContext(otTracer, "PostIssue", logger)))...,
+	))
+
 	r.Methods("DELETE").Path("/v1/devices/{deviceId}/revoke").Handler(httptransport.NewServer(
 		jwt.NewParser(auth.Kf, stdjwt.SigningMethodRS256, auth.KeycloakClaimsFactory)(e.DeleteRevoke),
 		decodedecodeDeleteRevokeRequest,
@@ -151,12 +159,24 @@ func decodeDeleteDeviceRequest(ctx context.Context, r *http.Request) (request in
 	return deleteDeviceRequest{Id: id}, nil
 }
 func decodePostIssueRequest(ctx context.Context, r *http.Request) (request interface{}, err error) {
+	contentType := r.Header.Get("Content-Type")
+	if contentType != "application/pkcs10" {
+		return nil, ErrIncorrectType
+	}
 	vars := mux.Vars(r)
 	id, ok := vars["deviceId"]
 	if !ok {
 		return nil, ErrInvalidDeviceId
 	}
-	return postIssueRequest{Id: id}, nil
+	data, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return nil, ErrEmptyBody
+	}
+	req := postIssueRequest{
+		Id:  id,
+		Csr: data,
+	}
+	return req, nil
 }
 func decodedecodeDeleteRevokeRequest(ctx context.Context, r *http.Request) (request interface{}, err error) {
 	vars := mux.Vars(r)
