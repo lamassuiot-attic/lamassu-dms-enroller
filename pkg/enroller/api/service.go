@@ -14,14 +14,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"os"
-	"strconv"
-	"strings"
-	"sync"
-	"time"
-
-	"github.com/lamassuiot/lamassu-est/client/estclient"
-
+	"github.com/go-kit/kit/auth/jwt"
 	"github.com/lamassuiot/enroller/pkg/enroller/auth"
 	"github.com/lamassuiot/enroller/pkg/enroller/crypto"
 	"github.com/lamassuiot/enroller/pkg/enroller/models/certs"
@@ -30,8 +23,12 @@ import (
 	csrmodel "github.com/lamassuiot/enroller/pkg/enroller/models/csr"
 	csrstore "github.com/lamassuiot/enroller/pkg/enroller/models/csr/store"
 	"github.com/lamassuiot/enroller/pkg/enroller/secrets"
-
-	"github.com/go-kit/kit/auth/jwt"
+	"github.com/lamassuiot/lamassu-est/client/estclient"
+	"os"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
 )
 
 type Service interface {
@@ -369,7 +366,6 @@ func (s *enrollerService) approbeCSR(id int, csr csrmodel.CSR) error {
 		return ErrUpdateCSR
 	}
 	return nil
-
 }
 
 func (s *enrollerService) signCSR(csr *x509.CertificateRequest) (*x509.Certificate, error) {
