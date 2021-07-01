@@ -20,6 +20,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/go-kit/kit/auth/jwt"
 	"github.com/lamassuiot/enroller/pkg/enroller/auth"
 	"github.com/lamassuiot/enroller/pkg/enroller/crypto"
 	"github.com/lamassuiot/enroller/pkg/enroller/models/certs"
@@ -28,8 +29,7 @@ import (
 	csrmodel "github.com/lamassuiot/enroller/pkg/enroller/models/csr"
 	csrstore "github.com/lamassuiot/enroller/pkg/enroller/models/csr/store"
 	"github.com/lamassuiot/enroller/pkg/enroller/secrets"
-
-	"github.com/go-kit/kit/auth/jwt"
+	"github.com/lamassuiot/lamassu-est/client/estclient"
 )
 
 type Service interface {
@@ -343,7 +343,6 @@ func (s *enrollerService) revokeCert(id int) error {
 		return ErrRevokeCert
 	}
 	return nil
-
 }
 
 func (s *enrollerService) approbeCSR(id int, csr csrmodel.CSR) error {
@@ -351,7 +350,8 @@ func (s *enrollerService) approbeCSR(id int, csr csrmodel.CSR) error {
 	if err != nil {
 		return err
 	}
-	crt, err := s.signCSR(csrData)
+	//crt, err := s.signCSR(csrData)
+	crt, err := estclient.Enroll(csrData)
 	if err != nil {
 		return err
 	}
@@ -368,7 +368,6 @@ func (s *enrollerService) approbeCSR(id int, csr csrmodel.CSR) error {
 		return ErrUpdateCSR
 	}
 	return nil
-
 }
 
 func (s *enrollerService) signCSR(csr *x509.CertificateRequest) (*x509.Certificate, error) {

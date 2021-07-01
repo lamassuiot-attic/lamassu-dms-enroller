@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/lamassuiot/enroller/pkg/devices/api"
 	"github.com/lamassuiot/enroller/pkg/devices/auth"
@@ -40,7 +41,8 @@ func main() {
 	devicesConnStr := "dbname=" + cfg.PostgresDB + " user=" + cfg.PostgresUser + " password=" + cfg.PostgresPassword + " host=" + cfg.PostgresHostname + " port=" + cfg.PostgresPort + " sslmode=disable"
 	devicesDb, err := devicesDb.NewDB("postgres", devicesConnStr, logger)
 	if err != nil {
-		level.Error(logger).Log("err", err, "msg", "Could not start connection with Devices database")
+		level.Error(logger).Log("err", err, "msg", "Could not start connection with Devices database. Will sleep for 5 seconds and exit the program")
+		time.Sleep(5 * time.Second)
 		os.Exit(1)
 	}
 	level.Info(logger).Log("msg", "Connection established with Devices database")

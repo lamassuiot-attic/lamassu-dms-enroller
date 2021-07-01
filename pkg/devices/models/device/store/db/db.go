@@ -52,7 +52,7 @@ func (db *DB) InsertDevice(dev device.Device) error {
 	err := db.QueryRow(sqlStatement,
 		dev.Id,
 		dev.Alias,
-		device.DeviceCreated,
+		device.DevicePendingProvision,
 		dev.DmsId,
 		dev.Country,
 		dev.State,
