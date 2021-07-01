@@ -127,6 +127,20 @@ func (mw loggingMiddleware) IssueDeviceCertUsingDefaults(ctx context.Context, id
 	return mw.next.IssueDeviceCertUsingDefaults(ctx, id)
 }
 
+func (mw loggingMiddleware) IssueDeviceCertViaDMS(ctx context.Context, deviceId string, serialNumber string, caName string) (err error) {
+	defer func(begin time.Time) {
+		mw.logger.Log(
+			"method", "IssueDeviceCertViaDMS",
+			"deviceId", deviceId,
+			"serialNumber", serialNumber,
+			"caName", caName,
+			"took", time.Since(begin),
+			"err", err,
+		)
+	}(time.Now())
+	return mw.next.IssueDeviceCertViaDMS(ctx, deviceId, serialNumber, caName)
+}
+
 func (mw loggingMiddleware) RevokeDeviceCert(ctx context.Context, id string) (err error) {
 	defer func(begin time.Time) {
 		mw.logger.Log(

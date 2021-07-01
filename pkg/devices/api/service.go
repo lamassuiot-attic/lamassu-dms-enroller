@@ -3,13 +3,17 @@ package api
 import (
 	"context"
 	"crypto/rand"
+	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/asn1"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"net/http"
 	"sync"
 
+	"github.com/go-kit/kit/auth/jwt"
 	"github.com/lamassuiot/enroller/pkg/devices/models/device"
 	devicesModel "github.com/lamassuiot/enroller/pkg/devices/models/device"
 	devicesStore "github.com/lamassuiot/enroller/pkg/devices/models/device/store"
@@ -24,6 +28,7 @@ type Service interface {
 	DeleteDevice(ctx context.Context, id string) error
 	IssueDeviceCert(ctx context.Context, id string, csrBytes []byte) (string, error)
 	IssueDeviceCertUsingDefaults(ctx context.Context, id string) (string, string, error)
+	IssueDeviceCertViaDMS(ctx context.Context, deviceId string, serialNumber string, caName string) error
 	RevokeDeviceCert(ctx context.Context, id string) error
 
 	GetDeviceLogs(ctx context.Context, id string) (devicesModel.DeviceLogs, error)
@@ -141,6 +146,7 @@ func (s *devicesService) DeleteDevice(ctx context.Context, id string) error {
 	return err
 }
 
+// TODO
 func (s *devicesService) IssueDeviceCertUsingDefaults(ctx context.Context, id string) (string, string, error) {
 	/*device, err := s.devicesDb.SelectDeviceById(id)
 	if err != nil {
@@ -215,7 +221,9 @@ func (s *devicesService) IssueDeviceCertUsingDefaults(ctx context.Context, id st
 	return "", "", nil
 }
 
+// TODO
 func (s *devicesService) IssueDeviceCert(ctx context.Context, id string, csrBytes []byte) (string, error) {
+	// TODO
 	// GET LAST CERT ID & If revoked, update status to "Revoked" else return error: CANT ISSUE
 	currentCertHistory, err := s.devicesDb.SelectDeviceLastCertHistory(id)
 	if err != nil {
@@ -233,12 +241,13 @@ func (s *devicesService) IssueDeviceCert(ctx context.Context, id string, csrByte
 		//		return "", ErrActiveCert
 		// -> Is Expired
 		//		OK: Issue cert
+	}
 
-		// ISSUE VAULT CERT (debera devolver 4 cosas: crt, crt-serial, crt-issuer-serial, crt-issuer-name(aka. CA) )
-		err = s.devicesDb.UpdateDeviceLastCertHistory(id, device.CertHistoryRevoked)
-		if err != nil {
-			return "", err
-		}
+	// ISSUE VAULT CERT (debera devolver 3 cosas: crt, crt-serial,  crt-issuer-name(aka. CA) )
+
+	err = s.devicesDb.UpdateDeviceLastCertHistory(id, device.CertHistoryRevoked)
+	if err != nil {
+		return "", err
 	}
 
 	log := devicesModel.DeviceLog{
@@ -273,19 +282,84 @@ func (s *devicesService) IssueDeviceCert(ctx context.Context, id string, csrByte
 	return "", nil
 }
 
-func (s *devicesService) RevokeDeviceCert(ctx context.Context, id string) error {
-	/*currentCertHistory, err := s.devicesDb.SelectDeviceLastCertHistory(id)
+func (s *devicesService) IssueDeviceCertViaDMS(ctx context.Context, deviceId string, serialNumber string, caName string) error {
+	newCertHistory := devicesModel.DeviceCertHistory{
+		DeviceId:           deviceId,
+		SerialNumber:       serialNumber,
+		IsuuerName:         caName,
+		IssuerSerialNumber: "",
+		Status:             devicesModel.CertHistoryActive,
+	}
+	err := s.devicesDb.InsertDeviceCertHistory(newCertHistory)
 	if err != nil {
 		return err
-	}*/
-	// revoke
-	fmt.Println("TODO: Revoke cert ")
-	/*err = s.devicesDb.UpdateDeviceLastCertHistory(id, devicesModel.CertHistoryRevoked)
-	if err != nil {
-		return err
-	}*/
+	}
 
-	err := s.devicesDb.UpdateDeviceStatusByID(id, devicesModel.DeviceCertRevoked)
+	err = s.devicesDb.UpdateDeviceStatusByID(deviceId, devicesModel.DeviceProvisioned)
+	if err != nil {
+		return err
+	}
+
+	log := devicesModel.DeviceLog{
+		DeviceId:   deviceId,
+		LogType:    devicesModel.LogProvisioned,
+		LogMessage: "",
+	}
+	err = s.devicesDb.InsertLog(log)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *devicesService) RevokeDeviceCert(ctx context.Context, id string) error {
+	currentCertHistory, err := s.devicesDb.SelectDeviceLastCertHistory(id)
+	if err != nil {
+		return err
+	}
+	// revoke
+
+	fmt.Println("TODO: Revoke cert ")
+	certPool := x509.NewCertPool()
+	pem, err := ioutil.ReadFile("/home/ubuntu/Desktop/LAMASSU/lamassu-ca/localhost.crt")
+	if err != nil {
+		return err
+	}
+	certPool.AppendCertsFromPEM(pem)
+
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{
+			RootCAs: certPool,
+		},
+	}
+	client := &http.Client{Transport: tr}
+	req, err := http.NewRequest(
+		"DELETE",
+		"https://ca:8087/v1/cas/"+currentCertHistory.IsuuerName+"/cert/"+currentCertHistory.SerialNumber,
+		nil,
+	)
+	if err != nil {
+		return err
+	}
+
+	req.Header.Add("Accept", "application/json")
+	reqToken := ctx.Value(jwt.JWTTokenContextKey)
+
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", reqToken))
+	_ = req.WithContext(ctx)
+
+	_, err = client.Do(req)
+	if err != nil {
+		return err
+	}
+
+	err = s.devicesDb.UpdateDeviceLastCertHistory(id, devicesModel.CertHistoryRevoked)
+	if err != nil {
+		return err
+	}
+
+	err = s.devicesDb.UpdateDeviceStatusByID(id, devicesModel.DeviceCertRevoked)
 	if err != nil {
 		return err
 	}

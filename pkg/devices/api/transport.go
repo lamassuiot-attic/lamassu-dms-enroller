@@ -86,6 +86,13 @@ func MakeHTTPHandler(s Service, logger log.Logger, auth auth.Auth, otTracer stdo
 		append(options, httptransport.ServerBefore(opentracing.HTTPToContext(otTracer, "PostIssue", logger)))...,
 	))
 
+	r.Methods("POST").Path("/v1/devices/{deviceId}/issue/dms").Handler(httptransport.NewServer(
+		jwt.NewParser(auth.Kf, stdjwt.SigningMethodRS256, auth.KeycloakClaimsFactory)(e.PostIssuedViaDMS),
+		decodePostIssueViaDMSRequest,
+		encodeResponse,
+		append(options, httptransport.ServerBefore(opentracing.HTTPToContext(otTracer, "PostIssuedViaDMS", logger)))...,
+	))
+
 	r.Methods("POST").Path("/v1/devices/{deviceId}/issue/defaults").Handler(httptransport.NewServer(
 		jwt.NewParser(auth.Kf, stdjwt.SigningMethodRS256, auth.KeycloakClaimsFactory)(e.PostIssueUsingDefaults),
 		decodePostIssueRequest,
@@ -177,6 +184,20 @@ func decodePostIssueRequest(ctx context.Context, r *http.Request) (request inter
 		Csr: data,
 	}
 	return req, nil
+}
+func decodePostIssueViaDMSRequest(ctx context.Context, r *http.Request) (request interface{}, err error) {
+	var issueViaDmsRequest postIssueViaDMSRequest
+	vars := mux.Vars(r)
+	id, ok := vars["deviceId"]
+	if !ok {
+		return nil, ErrInvalidDeviceId
+	}
+	json.NewDecoder(r.Body).Decode((&issueViaDmsRequest))
+	if err != nil {
+		return nil, errors.New("Cannot decode JSON request")
+	}
+	issueViaDmsRequest.DeviceId = id
+	return issueViaDmsRequest, nil
 }
 func decodedecodeDeleteRevokeRequest(ctx context.Context, r *http.Request) (request interface{}, err error) {
 	vars := mux.Vars(r)

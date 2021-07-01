@@ -103,6 +103,15 @@ func (mw *instrumentingMiddleware) IssueDeviceCertUsingDefaults(ctx context.Cont
 
 	return mw.next.IssueDeviceCertUsingDefaults(ctx, id)
 }
+func (mw *instrumentingMiddleware) IssueDeviceCertViaDMS(ctx context.Context, deviceId string, serialNumber string, caName string) (err error) {
+	defer func(begin time.Time) {
+		lvs := []string{"method", "IssueDeviceCertViaDMS", "error", fmt.Sprint(err != nil)}
+		mw.requestCount.With(lvs...).Add(1)
+		mw.requestLatency.With(lvs...).Observe(time.Since(begin).Seconds())
+	}(time.Now())
+
+	return mw.next.IssueDeviceCertViaDMS(ctx, deviceId, serialNumber, caName)
+}
 func (mw *instrumentingMiddleware) RevokeDeviceCert(ctx context.Context, id string) (err error) {
 	defer func(begin time.Time) {
 		lvs := []string{"method", "RevokeDeviceCert", "error", fmt.Sprint(err != nil)}

@@ -19,6 +19,7 @@ type Endpoints struct {
 	DeleteDevice           endpoint.Endpoint
 	PostIssue              endpoint.Endpoint
 	PostIssueUsingDefaults endpoint.Endpoint
+	PostIssuedViaDMS       endpoint.Endpoint
 	DeleteRevoke           endpoint.Endpoint
 	GetDeviceLogs          endpoint.Endpoint
 }
@@ -64,6 +65,11 @@ func MakeServerEndpoints(s Service, otTracer stdopentracing.Tracer) Endpoints {
 		postIssueUsingDefaultsEndpoint = MakePostIssueUsingDefaultsEndpoint(s)
 		postIssueUsingDefaultsEndpoint = opentracing.TraceServer(otTracer, "PostIssueUsingDefaults")(postIssueUsingDefaultsEndpoint)
 	}
+	var postIssueViaDmsEndpoint endpoint.Endpoint
+	{
+		postIssueViaDmsEndpoint = MakePostIssueViaDmsEndpoint(s)
+		postIssueViaDmsEndpoint = opentracing.TraceServer(otTracer, "PostIssuedViaDMS")(postIssueViaDmsEndpoint)
+	}
 	var deleteRevokeEndpoint endpoint.Endpoint
 	{
 		deleteRevokeEndpoint = MakeDeleteRevokeEndpoint(s)
@@ -84,6 +90,7 @@ func MakeServerEndpoints(s Service, otTracer stdopentracing.Tracer) Endpoints {
 		DeleteDevice:           deleteDeviceEndpoint,
 		PostIssue:              postIssueEndpoint,
 		PostIssueUsingDefaults: postIssueUsingDefaultsEndpoint,
+		PostIssuedViaDMS:       postIssueViaDmsEndpoint,
 		DeleteRevoke:           deleteRevokeEndpoint,
 		GetDeviceLogs:          getDeviceLogsEndpoint,
 	}
@@ -140,6 +147,13 @@ func MakePostIssueUsingDefaultsEndpoint(s Service) endpoint.Endpoint {
 		req := request.(postIssueRequestUsingDefaults)
 		privKey, cert, e := s.IssueDeviceCertUsingDefaults(ctx, req.Id)
 		return postIssueCertUsingDefaultResponse{PrivKey: privKey, Crt: cert, Err: e}, nil
+	}
+}
+func MakePostIssueViaDmsEndpoint(s Service) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
+		req := request.(postIssueViaDMSRequest)
+		e := s.IssueDeviceCertViaDMS(ctx, req.DeviceId, req.SerialNumber, req.CAName)
+		return nil, e
 	}
 }
 func MakePostIssueEndpoint(s Service) endpoint.Endpoint {
@@ -206,6 +220,11 @@ type postIssueRequest struct {
 type postIssueCertResponse struct {
 	Crt string `json:"crt,omitempty"`
 	Err error  `json:"err,omitempty"`
+}
+type postIssueViaDMSRequest struct {
+	SerialNumber string `json:"serial_number"`
+	CAName       string `json:"ca_name"`
+	DeviceId     string `json:"omitempty"`
 }
 type postIssueCertUsingDefaultResponse struct {
 	Crt     string `json:"crt,omitempty"`

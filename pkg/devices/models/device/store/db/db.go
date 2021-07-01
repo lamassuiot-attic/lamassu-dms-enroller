@@ -241,24 +241,22 @@ func (db *DB) SelectDeviceLogs(deviceId string) (device.DeviceLogs, error) {
 func (db *DB) InsertDeviceCertHistory(certHistory device.DeviceCertHistory) error {
 	// Add TStamp
 	sqlStatement := `
-	INSERT INTO device_certificates_history(serial_number, device_uuid, issuer_serial_number, issuer_name, device_uuid, creation_ts)
-	VALUES($1, $2, $3, $4, $5)
-	RETURNING id;
+	INSERT INTO device_certificates_history(serial_number, device_uuid, issuer_serial_number, issuer_name, status, creation_ts)
+	VALUES($1, $2, $3, $4, $5, $6)
 	`
-	var serial_number string
-	err := db.QueryRow(sqlStatement,
+	_, err := db.Exec(sqlStatement,
 		certHistory.SerialNumber,
 		certHistory.DeviceId,
 		certHistory.IssuerSerialNumber,
 		certHistory.IsuuerName,
 		device.CertHistoryActive,
 		time.Now(),
-	).Scan(&serial_number)
+	)
 	if err != nil {
 		level.Error(db.logger).Log("err", err, "msg", "Could not insert Devices Cert History for device with SerialNumber "+certHistory.SerialNumber+" in database")
 		return err
 	}
-	level.Info(db.logger).Log("msg", "Devices Cert History with ID "+certHistory.SerialNumber+" inserted in database")
+	level.Info(db.logger).Log("msg", "Devices Cert History with Serial Number "+certHistory.SerialNumber+" inserted in database")
 	return nil
 }
 
