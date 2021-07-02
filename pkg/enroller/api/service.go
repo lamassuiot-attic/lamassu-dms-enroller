@@ -351,7 +351,7 @@ func (s *enrollerService) approbeCSR(id int, csr csrmodel.CSR) error {
 		return err
 	}
 	//crt, err := s.signCSR(csrData)
-	crt, err := estclient.Enroll(csrData)
+	crt, err := estclient.Enroll(csrData, "Lamassu-DMS") //TODO: Get CA name form somewhere else
 	if err != nil {
 		return err
 	}
