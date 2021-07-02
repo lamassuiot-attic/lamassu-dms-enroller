@@ -3,6 +3,7 @@ module github.com/lamassuiot/enroller
 go 1.13
 
 require (
+	github.com/lamassuiot/lamassu-est v0.0.9
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/go-kit/kit v0.10.0
 	github.com/go-stack/stack v1.8.0 // indirect

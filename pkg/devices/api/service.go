@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/tls"
@@ -14,7 +15,12 @@ import (
 	"sync"
 
 	"github.com/go-kit/kit/auth/jwt"
-	"github.com/lamassuiot/enroller/pkg/devices/models/device"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"net/http"
+	"sync"
+
 	devicesModel "github.com/lamassuiot/enroller/pkg/devices/models/device"
 	devicesStore "github.com/lamassuiot/enroller/pkg/devices/models/device/store"
 )
@@ -244,7 +250,19 @@ func (s *devicesService) IssueDeviceCert(ctx context.Context, id string, csrByte
 		//		OK: Issue cert
 	}
 
-	// ISSUE VAULT CERT (debera devolver 3 cosas: crt, crt-serial,  crt-issuer-name(aka. CA) )
+		// ISSUE VAULT CERT (debera devolver 4 cosas: crt, crt-serial, crt-issuer-serial, crt-issuer-name(aka. CA) )
+	}
+
+	// http client
+	/*postBody, _ := json.Marshal(map[string]string{
+		"name":  "Toby",
+		"email": "Toby@example.com",
+	})
+	responseBody := bytes.NewBuffer(postBody)
+	resp, err := http.Post("http://localhost:8080/", "application/json", responseBody)
+	if err != nil {
+		return "", err
+	}*/
 
 	err = s.devicesDb.UpdateDeviceLastCertHistory(id, device.CertHistoryRevoked)
 	if err != nil {
@@ -262,7 +280,7 @@ func (s *devicesService) IssueDeviceCert(ctx context.Context, id string, csrByte
 	}
 
 	err = s.devicesDb.UpdateDeviceStatusByID(id, devicesModel.DeviceProvisioned)
-	if err != nil {
+	if err != nil  {
 		return "", err
 	}
 
