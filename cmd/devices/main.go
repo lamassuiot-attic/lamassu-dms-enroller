@@ -107,7 +107,7 @@ func main() {
 	http.Handle("/", accessControl(mux, "", "", ""))
 	http.Handle("/metrics", promhttp.Handler())
 
-	ca := ca.NewVaultService()
+	ca := ca.NewVaultService(devicesDb)
 	server, _ := estserver.NewServer(ca)
 
 	errs := make(chan error)

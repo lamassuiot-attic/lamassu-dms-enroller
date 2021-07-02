@@ -115,14 +115,14 @@ func MakeHTTPHandler(s Service, logger log.Logger, auth auth.Auth, otTracer stdo
 	))
 
 	r.Methods("GET").Path("/v1/devices/{deviceId}/cert").Handler(httptransport.NewServer(
-		jwt.NewParser(auth.Kf, stdjwt.SigningMethodRS256, auth.KeycloakClaimsFactory)(e.GetDeviceLogs),
+		jwt.NewParser(auth.Kf, stdjwt.SigningMethodRS256, auth.KeycloakClaimsFactory)(e.GetDeviceCert),
 		decodedecodeGetDeviceCertRequest,
 		encodeResponse,
 		append(options, httptransport.ServerBefore(opentracing.HTTPToContext(otTracer, "GetDeviceCert", logger)))...,
 	))
 
 	r.Methods("GET").Path("/v1/devices/{deviceId}/cert-history").Handler(httptransport.NewServer(
-		jwt.NewParser(auth.Kf, stdjwt.SigningMethodRS256, auth.KeycloakClaimsFactory)(e.GetDeviceLogs),
+		jwt.NewParser(auth.Kf, stdjwt.SigningMethodRS256, auth.KeycloakClaimsFactory)(e.GetDeviceCertHistory),
 		decodedecodeGetDeviceCertHistoryRequest,
 		encodeResponse,
 		append(options, httptransport.ServerBefore(opentracing.HTTPToContext(otTracer, "GetDeviceCertHistory", logger)))...,

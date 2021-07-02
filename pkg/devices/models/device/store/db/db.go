@@ -44,8 +44,8 @@ func checkDBAlive(db *sql.DB) error {
 func (db *DB) InsertDevice(dev device.Device) error {
 
 	sqlStatement := `
-	INSERT INTO device_information(id, alias, status, dms_id,country, state ,locality ,organization ,organization_unit, common_name, key_type, key_bits, key_stregnth, creation_ts)
-	VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+	INSERT INTO device_information(id, alias, status, dms_id,country, state ,locality ,organization ,organization_unit, common_name, key_type, key_bits, key_stregnth, current_cert_serial_number, creation_ts)
+	VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
 	RETURNING id;
 	`
 	var id string
@@ -63,6 +63,7 @@ func (db *DB) InsertDevice(dev device.Device) error {
 		dev.KeyType,
 		dev.KeyBits,
 		dev.KeyStrength,
+		"",
 		time.Now(),
 	).Scan(&id)
 	if err != nil {
@@ -87,7 +88,7 @@ func (db *DB) SelectAllDevices() (device.Devices, error) {
 	devices := make([]device.Device, 0)
 	for rows.Next() {
 		var dev device.Device
-		err := rows.Scan(&dev.Id, &dev.Alias, &dev.Status, &dev.DmsId, &dev.Country, &dev.State, &dev.Locality, &dev.Organization, &dev.OrganizationUnit, &dev.CommonName, &dev.KeyStrength, &dev.KeyType, &dev.KeyBits, &dev.CreationTimestamp)
+		err := rows.Scan(&dev.Id, &dev.Alias, &dev.Status, &dev.DmsId, &dev.Country, &dev.State, &dev.Locality, &dev.Organization, &dev.OrganizationUnit, &dev.CommonName, &dev.KeyStrength, &dev.KeyType, &dev.KeyBits, &dev.CreationTimestamp, &dev.CurrentCertSerialNumber)
 		if err != nil {
 			level.Error(db.logger).Log("err", err, "msg", "Unable to read database Device row")
 			return device.Devices{}, err
@@ -105,7 +106,7 @@ func (db *DB) SelectDeviceById(id string) (device.Device, error) {
 	`
 	var dev device.Device
 	err := db.QueryRow(sqlStatement, id).Scan(
-		&dev.Id, &dev.Alias, &dev.Status, &dev.DmsId, &dev.Country, &dev.State, &dev.Locality, &dev.Organization, &dev.OrganizationUnit, &dev.CommonName, &dev.KeyStrength, &dev.KeyType, &dev.KeyBits, &dev.CreationTimestamp,
+		&dev.Id, &dev.Alias, &dev.Status, &dev.DmsId, &dev.Country, &dev.State, &dev.Locality, &dev.Organization, &dev.OrganizationUnit, &dev.CommonName, &dev.KeyStrength, &dev.KeyType, &dev.KeyBits, &dev.CreationTimestamp, &dev.CurrentCertSerialNumber,
 	)
 
 	if err != nil {
@@ -164,6 +165,31 @@ func (db *DB) UpdateDeviceStatusByID(id string, newStatus string) error {
 		return err
 	}
 	level.Error(db.logger).Log("err", err, "msg", "Updated device with ID "+id+" to "+newStatus+" status")
+	return nil
+}
+
+func (db *DB) UpdateDeviceCertificateSerialNumberByID(id string, serialNumber string) error {
+	sqlStatement := `
+	UPDATE device_information 
+	SET current_cert_serial_number = $2 
+	WHERE id = $1
+	`
+	res, err := db.Exec(sqlStatement, id, serialNumber)
+	if err != nil {
+		level.Error(db.logger).Log("err", err, "msg", "Could not updated Device with ID "+id+" to "+serialNumber+" serial number")
+		return err
+	}
+	count, err := res.RowsAffected()
+	if err != nil {
+		level.Error(db.logger).Log("err", err, "msg", "Could not updated Device with ID "+id+" to "+serialNumber+" serial number")
+		return err
+	}
+	if count <= 0 {
+		err = errors.New("No rows have been updated in database")
+		level.Error(db.logger).Log("err", err)
+		return err
+	}
+	level.Error(db.logger).Log("err", err, "msg", "Updated device with ID "+id+" to "+serialNumber+" serial number")
 	return nil
 }
 
@@ -283,27 +309,40 @@ func (db *DB) SelectDeviceCertHistory(deviceId string) (device.DeviceCertsHistor
 		deviceCertHistory = append(deviceCertHistory, certHistory)
 	}
 
-	return device.DeviceCertsHistory{DeviceCertHistory: deviceCertHistory}, err
+	return device.DeviceCertsHistory{DeviceCertHistory: deviceCertHistory}, nil
 }
 
-func (db *DB) UpdateDeviceLastCertHistory(deviceId string, newStatus string) error {
-	devHisto, err := db.SelectDeviceLastCertHistory(deviceId)
+func (db *DB) SelectDeviceCertHistoryBySerialNumber(serialNumber string) (device.DeviceCertHistory, error) {
+	sqlStatement := `
+	SELECT * FROM device_certificates_history where serial_number = $1
+	`
+	var devCh device.DeviceCertHistory
+	err := db.QueryRow(sqlStatement, serialNumber).Scan(
+		&devCh.SerialNumber, &devCh.DeviceId, &devCh.IssuerSerialNumber, &devCh.IsuuerName, &devCh.Status, &devCh.CreationTimestamp,
+	)
+
 	if err != nil {
-		return err
+		level.Error(db.logger).Log("err", err, "msg", "Could not obtain Device Cert history with serialNumber: "+serialNumber+" from database")
+		return device.DeviceCertHistory{}, err
 	}
+
+	return devCh, nil
+}
+
+func (db *DB) UpdateDeviceCertHistory(deviceId string, serialNumber string, newStatus string) error {
 	sqlStatement := `
 	UPDATE device_certificates_history 
 	SET status = $2 
 	WHERE serial_number = $1
 	`
-	res, err := db.Exec(sqlStatement, devHisto.SerialNumber, newStatus)
+	res, err := db.Exec(sqlStatement, serialNumber, newStatus)
 	if err != nil {
-		level.Error(db.logger).Log("err", err, "msg", "Could not updated Devices Cert History with ID "+devHisto.SerialNumber+" to "+newStatus+" status")
+		level.Error(db.logger).Log("err", err, "msg", "Could not updated Devices Cert History with ID "+serialNumber+" to "+newStatus+" status")
 		return err
 	}
 	count, err := res.RowsAffected()
 	if err != nil {
-		level.Error(db.logger).Log("err", err, "msg", "Could not updated Devices Cert History with ID "+devHisto.SerialNumber+" to "+newStatus+" status")
+		level.Error(db.logger).Log("err", err, "msg", "Could not updated Devices Cert History with ID "+serialNumber+" to "+newStatus+" status")
 		return err
 	}
 	if count <= 0 {
@@ -311,24 +350,6 @@ func (db *DB) UpdateDeviceLastCertHistory(deviceId string, newStatus string) err
 		level.Error(db.logger).Log("err", err)
 		return err
 	}
-	level.Error(db.logger).Log("err", err, "msg", "Updated Devices Cert History with ID "+devHisto.SerialNumber+" to "+newStatus+" status")
+	level.Error(db.logger).Log("err", err, "msg", "Updated Devices Cert History with ID "+serialNumber+" to "+newStatus+" status")
 	return nil
-}
-
-func (db *DB) SelectDeviceLastCertHistory(deviceId string) (device.DeviceCertHistory, error) {
-	sqlStatement := `
-	SELECT * FROM device_certificates_history where device_uuid = $1
-	`
-	var devHisto device.DeviceCertHistory
-	err := db.QueryRow(sqlStatement, deviceId).Scan(&devHisto.SerialNumber, &devHisto.DeviceId, &devHisto.IssuerSerialNumber, &devHisto.IsuuerName, &devHisto.Status, &devHisto.CreationTimestamp)
-
-	if err != nil {
-		if err.Error() == "sql: no rows in result set" {
-			return device.DeviceCertHistory{}, nil
-		}
-		level.Error(db.logger).Log("err", err, "msg", "Could not obtain last Devices Cert History fo Device "+deviceId+" from database")
-		return device.DeviceCertHistory{}, err
-	}
-
-	return devHisto, nil
 }

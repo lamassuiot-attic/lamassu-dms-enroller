@@ -1,13 +1,13 @@
 package api
 
 import (
-	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/asn1"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -15,11 +15,8 @@ import (
 	"sync"
 
 	"github.com/go-kit/kit/auth/jwt"
-	"encoding/json"
-	"errors"
-	"fmt"
-	"net/http"
-	"sync"
+	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/log/level"
 
 	devicesModel "github.com/lamassuiot/enroller/pkg/devices/models/device"
 	devicesStore "github.com/lamassuiot/enroller/pkg/devices/models/device/store"
@@ -38,13 +35,14 @@ type Service interface {
 	RevokeDeviceCert(ctx context.Context, id string) error
 
 	GetDeviceLogs(ctx context.Context, id string) (devicesModel.DeviceLogs, error)
-	GetDeviceCert(ctx context.Context, id string) (string, error)
+	GetDeviceCert(ctx context.Context, id string) (devicesModel.DeviceCert, error)
 	GetDeviceCertHistory(ctx context.Context, id string) (devicesModel.DeviceCertsHistory, error)
 }
 
 type devicesService struct {
 	mtx       sync.RWMutex
 	devicesDb devicesStore.DB
+	logger    log.Logger
 }
 
 var (
@@ -136,14 +134,14 @@ func (s *devicesService) DeleteDevice(ctx context.Context, id string) error {
 		return err
 	}*/
 
-	err := s.devicesDb.UpdateDeviceStatusByID(id, devicesModel.DeviceDecomissioned)
+	err := s.devicesDb.UpdateDeviceStatusByID(id, devicesModel.DeviceDecommisioned)
 	if err != nil {
 		return err
 	}
 
 	log := devicesModel.DeviceLog{
 		DeviceId:   id,
-		LogType:    devicesModel.LogDeviceDecomissioned,
+		LogType:    devicesModel.LogDeviceDecommisioned,
 		LogMessage: "",
 	}
 	err = s.devicesDb.InsertLog(log)
@@ -232,7 +230,7 @@ func (s *devicesService) IssueDeviceCertUsingDefaults(ctx context.Context, id st
 func (s *devicesService) IssueDeviceCert(ctx context.Context, id string, csrBytes []byte) (string, error) {
 	// TODO
 	// GET LAST CERT ID & If revoked, update status to "Revoked" else return error: CANT ISSUE
-	currentCertHistory, err := s.devicesDb.SelectDeviceLastCertHistory(id)
+	/*currentCertHistory, err := s.devicesDb.SelectDeviceLastCertHistory(id)
 	if err != nil {
 		return "", err
 	}
@@ -254,7 +252,7 @@ func (s *devicesService) IssueDeviceCert(ctx context.Context, id string, csrByte
 	}
 
 	// http client
-	/*postBody, _ := json.Marshal(map[string]string{
+	postBody, _ := json.Marshal(map[string]string{
 		"name":  "Toby",
 		"email": "Toby@example.com",
 	})
@@ -262,7 +260,7 @@ func (s *devicesService) IssueDeviceCert(ctx context.Context, id string, csrByte
 	resp, err := http.Post("http://localhost:8080/", "application/json", responseBody)
 	if err != nil {
 		return "", err
-	}*/
+	}
 
 	err = s.devicesDb.UpdateDeviceLastCertHistory(id, device.CertHistoryRevoked)
 	if err != nil {
@@ -297,7 +295,7 @@ func (s *devicesService) IssueDeviceCert(ctx context.Context, id string, csrByte
 	if err != nil {
 		return "", err
 	}
-
+	*/
 	return "", nil
 }
 
@@ -333,13 +331,22 @@ func (s *devicesService) IssueDeviceCertViaDMS(ctx context.Context, deviceId str
 }
 
 func (s *devicesService) RevokeDeviceCert(ctx context.Context, id string) error {
-	currentCertHistory, err := s.devicesDb.SelectDeviceLastCertHistory(id)
+	dev, err := s.devicesDb.SelectDeviceById(id)
 	if err != nil {
 		return err
 	}
+
+	if dev.CurrentCertSerialNumber == "" {
+		return errors.New("The device has no cert")
+	}
+
+	currentCertHistory, err := s.devicesDb.SelectDeviceCertHistoryBySerialNumber(dev.CurrentCertSerialNumber)
+	if err != nil {
+		return err
+	}
+
 	// revoke
 
-	fmt.Println("TODO: Revoke cert ")
 	certPool := x509.NewCertPool()
 	pem, err := ioutil.ReadFile("/home/ubuntu/Desktop/LAMASSU/lamassu-ca/localhost.crt")
 	if err != nil {
@@ -355,7 +362,7 @@ func (s *devicesService) RevokeDeviceCert(ctx context.Context, id string) error 
 	client := &http.Client{Transport: tr}
 	req, err := http.NewRequest(
 		"DELETE",
-		"https://ca:8087/v1/cas/"+currentCertHistory.IsuuerName+"/cert/"+currentCertHistory.SerialNumber,
+		"https://localhost:8087/v1/cas/"+currentCertHistory.IsuuerName+"/cert/"+currentCertHistory.SerialNumber,
 		nil,
 	)
 	if err != nil {
@@ -373,12 +380,17 @@ func (s *devicesService) RevokeDeviceCert(ctx context.Context, id string) error 
 		return err
 	}
 
-	err = s.devicesDb.UpdateDeviceLastCertHistory(id, devicesModel.CertHistoryRevoked)
+	err = s.devicesDb.UpdateDeviceCertHistory(id, dev.CurrentCertSerialNumber, devicesModel.CertHistoryRevoked)
 	if err != nil {
 		return err
 	}
 
 	err = s.devicesDb.UpdateDeviceStatusByID(id, devicesModel.DeviceCertRevoked)
+	if err != nil {
+		return err
+	}
+
+	err = s.devicesDb.UpdateDeviceCertificateSerialNumberByID(id, "")
 	if err != nil {
 		return err
 	}
@@ -411,13 +423,81 @@ func (s *devicesService) GetDeviceCertHistory(ctx context.Context, id string) (d
 	return history, nil
 }
 
-func (s *devicesService) GetDeviceCert(ctx context.Context, id string) (devicesModel.DeviceCertsHistory, error) {
-	lastHistory, err := s.devicesDb.SelectDeviceLastCertHistory(id)
+func (s *devicesService) GetDeviceCert(ctx context.Context, id string) (devicesModel.DeviceCert, error) {
+	dev, err := s.devicesDb.SelectDeviceById(id)
 	if err != nil {
-		return devicesModel.DeviceCertsHistory{}, err
+		return devicesModel.DeviceCert{}, err
 	}
-	lastHistory.SerialNumber, 
-	return history, nil
+
+	if dev.CurrentCertSerialNumber == "" {
+		return devicesModel.DeviceCert{}, errors.New("The device has no cert")
+	}
+
+	currentCertHistory, err := s.devicesDb.SelectDeviceCertHistoryBySerialNumber(dev.CurrentCertSerialNumber)
+	if err != nil {
+		return devicesModel.DeviceCert{}, err
+	}
+
+	certPool := x509.NewCertPool()
+	pem, err := ioutil.ReadFile("/home/ubuntu/Desktop/LAMASSU/lamassu-ca/localhost.crt")
+	if err != nil {
+		return devicesModel.DeviceCert{}, err
+	}
+	certPool.AppendCertsFromPEM(pem)
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{
+			RootCAs: certPool,
+		},
+	}
+	client := &http.Client{Transport: tr}
+	req, err := http.NewRequest(
+		"GET",
+		"https://localhost:8087/v1/cas/"+currentCertHistory.IsuuerName+"/cert/"+currentCertHistory.SerialNumber,
+		nil,
+	)
+	if err != nil {
+		return devicesModel.DeviceCert{}, err
+	}
+
+	req.Header.Add("Accept", "application/json")
+	reqToken := ctx.Value(jwt.JWTTokenContextKey)
+
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", reqToken))
+	_ = req.WithContext(ctx)
+
+	response, err := client.Do(req)
+	if err != nil {
+		return devicesModel.DeviceCert{}, err
+	}
+	defer response.Body.Close()
+
+	var data map[string]interface{}
+	body, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		level.Error(s.logger).Log("err", err, "msg", "Could not parse response body")
+
+	}
+	err = json.Unmarshal(body, &data)
+	if err != nil {
+		level.Error(s.logger).Log("err", err, "msg", "Could not parse response json")
+
+	}
+
+	return devicesModel.DeviceCert{
+		DeviceId:     id,
+		SerialNumber: data["serial_number"].(string),
+		Status:       data["status"].(string),
+		CAName:       data["ca_name"].(string),
+		CRT:          data["crt"].(string),
+		Country:      data["country"].(string),
+		State:        data["state"].(string),
+		Locality:     data["locality"].(string),
+		Org:          data["organization"].(string),
+		OrgUnit:      data["organization_unit"].(string),
+		CommonName:   data["common_name"].(string),
+		ValidFrom:    data["valid_from"].(string),
+		ValidTo:      data["valid_to"].(string),
+	}, nil
 }
 
 func getKeyStrength(keyType string, keyBits int) string {

@@ -22,6 +22,8 @@ type Endpoints struct {
 	PostIssuedViaDMS       endpoint.Endpoint
 	DeleteRevoke           endpoint.Endpoint
 	GetDeviceLogs          endpoint.Endpoint
+	GetDeviceCert          endpoint.Endpoint
+	GetDeviceCertHistory   endpoint.Endpoint
 }
 
 func MakeServerEndpoints(s Service, otTracer stdopentracing.Tracer) Endpoints {
@@ -80,6 +82,16 @@ func MakeServerEndpoints(s Service, otTracer stdopentracing.Tracer) Endpoints {
 		getDeviceLogsEndpoint = MakeGetDeviceLogsEndpoint(s)
 		getDeviceLogsEndpoint = opentracing.TraceServer(otTracer, "getDeviceLogsEndpoint")(getDeviceLogsEndpoint)
 	}
+	var getDeviceCertEndpoint endpoint.Endpoint
+	{
+		getDeviceCertEndpoint = MakeGetDeviceCertEndpoint(s)
+		getDeviceCertEndpoint = opentracing.TraceServer(otTracer, "getDeviceCertEndpoint")(getDeviceCertEndpoint)
+	}
+	var getDeviceCertHistoryEndpoint endpoint.Endpoint
+	{
+		getDeviceCertHistoryEndpoint = MakeGetDeviceCertHistoryEndpoint(s)
+		getDeviceCertHistoryEndpoint = opentracing.TraceServer(otTracer, "getDeviceCertHistoryEndpoint")(getDeviceCertHistoryEndpoint)
+	}
 
 	return Endpoints{
 		HealthEndpoint:         healthEndpoint,
@@ -93,6 +105,8 @@ func MakeServerEndpoints(s Service, otTracer stdopentracing.Tracer) Endpoints {
 		PostIssuedViaDMS:       postIssueViaDmsEndpoint,
 		DeleteRevoke:           deleteRevokeEndpoint,
 		GetDeviceLogs:          getDeviceLogsEndpoint,
+		GetDeviceCert:          getDeviceCertEndpoint,
+		GetDeviceCertHistory:   getDeviceCertHistoryEndpoint,
 	}
 }
 
@@ -175,6 +189,20 @@ func MakeGetDeviceLogsEndpoint(s Service) endpoint.Endpoint {
 		req := request.(getDeviceLogsRequest)
 		logs, e := s.GetDeviceLogs(ctx, req.Id)
 		return logs.Logs, e
+	}
+}
+func MakeGetDeviceCertEndpoint(s Service) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
+		req := request.(getDeviceCertRequest)
+		deviceCert, e := s.GetDeviceCert(ctx, req.Id)
+		return deviceCert, e
+	}
+}
+func MakeGetDeviceCertHistoryEndpoint(s Service) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
+		req := request.(getDeviceCertHistoryRequest)
+		history, e := s.GetDeviceCertHistory(ctx, req.Id)
+		return history.DeviceCertHistory, e
 	}
 }
 

@@ -1,19 +1,28 @@
 package ca
 
 import (
+	"bytes"
 	"context"
 	"crypto/x509"
+	"fmt"
+	"math/big"
+	"net/http"
+
 	"github.com/globalsign/est"
 	"github.com/lamassuiot/lamassu-est/client/estclient"
-	"net/http"
+
+	devicesModel "github.com/lamassuiot/enroller/pkg/devices/models/device"
+	devicesStore "github.com/lamassuiot/enroller/pkg/devices/models/device/store"
 )
 
 type DeviceService struct {
-
+	devicesDb devicesStore.DB
 }
 
-func NewVaultService() *DeviceService {
-	return &DeviceService{}
+func NewVaultService(devicesDb devicesStore.DB) *DeviceService {
+	return &DeviceService{
+		devicesDb: devicesDb,
+	}
 }
 
 func (ca *DeviceService) CACerts(ctx context.Context, aps string, req *http.Request) ([]*x509.Certificate, error) {
@@ -28,6 +37,39 @@ func (ca *DeviceService) Enroll(ctx context.Context, csr *x509.CertificateReques
 	if err != nil {
 		return nil, err
 	}
+
+	log := devicesModel.DeviceLog{
+		DeviceId:   "c9eddb42-558d-4371-9f91-90ef29ad768d",
+		LogType:    devicesModel.LogProvisioned,
+		LogMessage: "",
+	}
+	err = ca.devicesDb.InsertLog(log)
+	if err != nil {
+		return nil, err
+	}
+
+	serialNumber := insertNth(toHexInt(cert.SerialNumber), 2)
+	certHistory := devicesModel.DeviceCertHistory{
+		SerialNumber: serialNumber,
+		DeviceId:     "c9eddb42-558d-4371-9f91-90ef29ad768d",
+		IsuuerName:   aps,
+		Status:       devicesModel.CertHistoryActive,
+	}
+	err = ca.devicesDb.InsertDeviceCertHistory(certHistory)
+	if err != nil {
+		return nil, err
+	}
+
+	err = ca.devicesDb.UpdateDeviceStatusByID("c9eddb42-558d-4371-9f91-90ef29ad768d", devicesModel.DeviceProvisioned)
+	if err != nil {
+		return nil, err
+	}
+
+	err = ca.devicesDb.UpdateDeviceCertificateSerialNumberByID("c9eddb42-558d-4371-9f91-90ef29ad768d", serialNumber)
+	if err != nil {
+		return nil, err
+	}
+
 	return cert, nil
 }
 
@@ -51,3 +93,22 @@ func (ca *DeviceService) TPMEnroll(ctx context.Context, csr *x509.CertificateReq
 	return nil, nil, nil, nil
 }
 
+func toHexInt(n *big.Int) string {
+	return fmt.Sprintf("%x", n) // or %X or upper case
+}
+
+func insertNth(s string, n int) string {
+	if len(s)%2 != 0 {
+		s = "0" + s
+	}
+	var buffer bytes.Buffer
+	var n_1 = n - 1
+	var l_1 = len(s) - 1
+	for i, rune := range s {
+		buffer.WriteRune(rune)
+		if i%n == n_1 && i != l_1 {
+			buffer.WriteRune('-')
+		}
+	}
+	return buffer.String()
+}

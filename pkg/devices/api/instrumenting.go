@@ -130,7 +130,7 @@ func (mw *instrumentingMiddleware) GetDeviceLogs(ctx context.Context, id string)
 
 	return mw.next.GetDeviceLogs(ctx, id)
 }
-func (mw *instrumentingMiddleware) GetDeviceCert(ctx context.Context, id string) (cert string, err error) {
+func (mw *instrumentingMiddleware) GetDeviceCert(ctx context.Context, id string) (cert devicesModel.DeviceCert, err error) {
 	defer func(begin time.Time) {
 		lvs := []string{"method", "GetDeviceCert", "error", fmt.Sprint(err != nil)}
 		mw.requestCount.With(lvs...).Add(1)

@@ -12,7 +12,8 @@ CREATE TABLE device_information (
     key_stregnth TEXT,
     key_type TEXT,
     key_bits int,
-    creation_ts timestamp
+    creation_ts timestamp,
+    current_cert_serial_number TEXT
 );
 
 CREATE TABLE device_logs (
