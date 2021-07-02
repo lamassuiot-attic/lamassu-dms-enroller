@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"github.com/lamassuiot/enroller/pkg/devices/ca"
+	"github.com/lamassuiot/lamassu-est/server/estserver"
 	"net/http"
 	"os"
 	"os/signal"
@@ -105,6 +107,9 @@ func main() {
 	http.Handle("/", accessControl(mux, "", "", ""))
 	http.Handle("/metrics", promhttp.Handler())
 
+	ca := ca.NewVaultService()
+	server, _ := estserver.NewServer(ca)
+
 	errs := make(chan error)
 	go func() {
 		c := make(chan os.Signal)
@@ -116,6 +121,8 @@ func main() {
 		level.Info(logger).Log("transport", "HTTPS", "address", ":"+cfg.Port, "msg", "listening")
 		errs <- http.ListenAndServeTLS(":"+cfg.Port, cfg.CertFile, cfg.KeyFile, nil)
 	}()
+
+	go server.ListenAndServeTLS("", "")
 
 	level.Info(logger).Log("exit", <-errs)
 	err = consulsd.Deregister()
