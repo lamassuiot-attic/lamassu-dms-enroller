@@ -32,6 +32,7 @@ type Service interface {
 	RevokeDeviceCert(ctx context.Context, id string) error
 
 	GetDeviceLogs(ctx context.Context, id string) (devicesModel.DeviceLogs, error)
+	GetDeviceCert(ctx context.Context, id string) (string, error)
 	GetDeviceCertHistory(ctx context.Context, id string) (devicesModel.DeviceCertsHistory, error)
 }
 
@@ -389,6 +390,15 @@ func (s *devicesService) GetDeviceCertHistory(ctx context.Context, id string) (d
 	if err != nil {
 		return devicesModel.DeviceCertsHistory{}, err
 	}
+	return history, nil
+}
+
+func (s *devicesService) GetDeviceCert(ctx context.Context, id string) (devicesModel.DeviceCertsHistory, error) {
+	lastHistory, err := s.devicesDb.SelectDeviceLastCertHistory(id)
+	if err != nil {
+		return devicesModel.DeviceCertsHistory{}, err
+	}
+	lastHistory.SerialNumber, 
 	return history, nil
 }
 

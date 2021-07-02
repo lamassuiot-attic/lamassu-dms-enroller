@@ -130,6 +130,15 @@ func (mw *instrumentingMiddleware) GetDeviceLogs(ctx context.Context, id string)
 
 	return mw.next.GetDeviceLogs(ctx, id)
 }
+func (mw *instrumentingMiddleware) GetDeviceCert(ctx context.Context, id string) (cert string, err error) {
+	defer func(begin time.Time) {
+		lvs := []string{"method", "GetDeviceCert", "error", fmt.Sprint(err != nil)}
+		mw.requestCount.With(lvs...).Add(1)
+		mw.requestLatency.With(lvs...).Observe(time.Since(begin).Seconds())
+	}(time.Now())
+
+	return mw.next.GetDeviceCert(ctx, id)
+}
 func (mw *instrumentingMiddleware) GetDeviceCertHistory(ctx context.Context, id string) (history devicesModel.DeviceCertsHistory, err error) {
 	defer func(begin time.Time) {
 		lvs := []string{"method", "GetDeviceCertHistory", "error", fmt.Sprint(err != nil)}

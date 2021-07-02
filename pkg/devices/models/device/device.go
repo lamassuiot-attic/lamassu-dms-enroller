@@ -4,7 +4,7 @@ type Device struct {
 	Id                string `json:"id"`
 	Alias             string `json:"alias"`
 	Status            string `json:"status,omitempty"`
-	DmsId             string `json:"dms_id"`
+	DmsId             int    `json:"dms_id"`
 	Country           string `json:"country"`
 	State             string `json:"state"`
 	Locality          string `json:"locality"`

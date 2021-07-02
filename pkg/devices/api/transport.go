@@ -114,6 +114,20 @@ func MakeHTTPHandler(s Service, logger log.Logger, auth auth.Auth, otTracer stdo
 		append(options, httptransport.ServerBefore(opentracing.HTTPToContext(otTracer, "GetDeviceLogs", logger)))...,
 	))
 
+	r.Methods("GET").Path("/v1/devices/{deviceId}/cert").Handler(httptransport.NewServer(
+		jwt.NewParser(auth.Kf, stdjwt.SigningMethodRS256, auth.KeycloakClaimsFactory)(e.GetDeviceLogs),
+		decodedecodeGetDeviceCertRequest,
+		encodeResponse,
+		append(options, httptransport.ServerBefore(opentracing.HTTPToContext(otTracer, "GetDeviceCert", logger)))...,
+	))
+
+	r.Methods("GET").Path("/v1/devices/{deviceId}/cert-history").Handler(httptransport.NewServer(
+		jwt.NewParser(auth.Kf, stdjwt.SigningMethodRS256, auth.KeycloakClaimsFactory)(e.GetDeviceLogs),
+		decodedecodeGetDeviceCertHistoryRequest,
+		encodeResponse,
+		append(options, httptransport.ServerBefore(opentracing.HTTPToContext(otTracer, "GetDeviceCertHistory", logger)))...,
+	))
+
 	return r
 }
 
@@ -214,6 +228,22 @@ func decodedecodeGetDeviceLogsRequest(ctx context.Context, r *http.Request) (req
 		return nil, ErrInvalidDeviceId
 	}
 	return getDeviceLogsRequest{Id: id}, nil
+}
+func decodedecodeGetDeviceCertRequest(ctx context.Context, r *http.Request) (request interface{}, err error) {
+	vars := mux.Vars(r)
+	id, ok := vars["deviceId"]
+	if !ok {
+		return nil, ErrInvalidDeviceId
+	}
+	return getDeviceCertRequest{Id: id}, nil
+}
+func decodedecodeGetDeviceCertHistoryRequest(ctx context.Context, r *http.Request) (request interface{}, err error) {
+	vars := mux.Vars(r)
+	id, ok := vars["deviceId"]
+	if !ok {
+		return nil, ErrInvalidDeviceId
+	}
+	return getDeviceCertHistoryRequest{Id: id}, nil
 }
 
 func encodeResponse(ctx context.Context, w http.ResponseWriter, response interface{}) error {

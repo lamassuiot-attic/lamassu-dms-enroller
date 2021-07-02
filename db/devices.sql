@@ -2,7 +2,7 @@ CREATE TABLE device_information (
     id TEXT PRIMARY KEY,
     alias TEXT,
     status TEXT,
-    dms_id TEXT,
+    dms_id int,
     country TEXT,
     state TEXT,
     locality TEXT,

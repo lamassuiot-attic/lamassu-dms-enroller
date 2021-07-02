@@ -237,3 +237,9 @@ type deleteRevokeRequest struct {
 type getDeviceLogsRequest struct {
 	Id string
 }
+type getDeviceCertRequest struct {
+	Id string
+}
+type getDeviceCertHistoryRequest struct {
+	Id string
+}

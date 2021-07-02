@@ -166,6 +166,19 @@ func (mw loggingMiddleware) GetDeviceLogs(ctx context.Context, id string) (logs 
 	return mw.next.GetDeviceLogs(ctx, id)
 }
 
+func (mw loggingMiddleware) GetDeviceCert(ctx context.Context, id string) (cert string, err error) {
+	defer func(begin time.Time) {
+		mw.logger.Log(
+			"method", "GetDeviceCert",
+			"id", id,
+			"cert", cert,
+			"took", time.Since(begin),
+			"err", err,
+		)
+	}(time.Now())
+	return mw.next.GetDeviceCert(ctx, id)
+}
+
 func (mw loggingMiddleware) GetDeviceCertHistory(ctx context.Context, id string) (histo devicesModel.DeviceCertsHistory, err error) {
 	defer func(begin time.Time) {
 		mw.logger.Log(
