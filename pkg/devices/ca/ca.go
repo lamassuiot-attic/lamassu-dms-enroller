@@ -4,11 +4,14 @@ import (
 	"bytes"
 	"context"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"math/big"
 	"net/http"
+	"strings"
 
 	"github.com/globalsign/est"
+	"github.com/go-kit/kit/log"
 	"github.com/lamassuiot/lamassu-est/client/estclient"
 
 	devicesModel "github.com/lamassuiot/enroller/pkg/devices/models/device"
@@ -17,6 +20,7 @@ import (
 
 type DeviceService struct {
 	devicesDb devicesStore.DB
+	logger    log.Logger
 }
 
 func NewVaultService(devicesDb devicesStore.DB) *DeviceService {
@@ -33,13 +37,34 @@ func (ca *DeviceService) CACerts(ctx context.Context, aps string, req *http.Requ
 }
 
 func (ca *DeviceService) Enroll(ctx context.Context, csr *x509.CertificateRequest, aps string, r *http.Request) (*x509.Certificate, error) {
+	deviceId := csr.Subject.CommonName
+	device, err := ca.devicesDb.SelectDeviceById(deviceId)
+	if err != nil {
+		if strings.Contains(err.Error(), "no rows in result set") {
+			fmt.Println("Device " + deviceId + " does not exist. Register the device first, and enroll it afterwards")
+		}
+		return nil, err
+	}
+	if device.Status == devicesModel.DeviceDecommisioned {
+		err := "Cant issue a certificate for a decommisioned device"
+		fmt.Println(err)
+		return nil, errors.New(err)
+	}
+	if device.Status == devicesModel.DeviceProvisioned {
+		err := "The device (" + deviceId + ") already has a valid certificate"
+		fmt.Println(err)
+		return nil, errors.New(err)
+	}
+
 	cert, err := estclient.Enroll(csr, aps)
 	if err != nil {
 		return nil, err
 	}
 
+	deviceId = cert.Subject.CommonName
+	fmt.Println("Device ID: " + deviceId)
 	log := devicesModel.DeviceLog{
-		DeviceId:   "c9eddb42-558d-4371-9f91-90ef29ad768d",
+		DeviceId:   deviceId,
 		LogType:    devicesModel.LogProvisioned,
 		LogMessage: "",
 	}
@@ -51,7 +76,7 @@ func (ca *DeviceService) Enroll(ctx context.Context, csr *x509.CertificateReques
 	serialNumber := insertNth(toHexInt(cert.SerialNumber), 2)
 	certHistory := devicesModel.DeviceCertHistory{
 		SerialNumber: serialNumber,
-		DeviceId:     "c9eddb42-558d-4371-9f91-90ef29ad768d",
+		DeviceId:     deviceId,
 		IsuuerName:   aps,
 		Status:       devicesModel.CertHistoryActive,
 	}
@@ -60,12 +85,12 @@ func (ca *DeviceService) Enroll(ctx context.Context, csr *x509.CertificateReques
 		return nil, err
 	}
 
-	err = ca.devicesDb.UpdateDeviceStatusByID("c9eddb42-558d-4371-9f91-90ef29ad768d", devicesModel.DeviceProvisioned)
+	err = ca.devicesDb.UpdateDeviceStatusByID(deviceId, devicesModel.DeviceProvisioned)
 	if err != nil {
 		return nil, err
 	}
 
-	err = ca.devicesDb.UpdateDeviceCertificateSerialNumberByID("c9eddb42-558d-4371-9f91-90ef29ad768d", serialNumber)
+	err = ca.devicesDb.UpdateDeviceCertificateSerialNumberByID(deviceId, serialNumber)
 	if err != nil {
 		return nil, err
 	}

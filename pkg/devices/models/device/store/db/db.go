@@ -229,10 +229,10 @@ func (db *DB) InsertLog(log device.DeviceLog) error {
 		log.DeviceId,
 		log.LogType,
 		log.LogMessage,
-	)
+	).Scan(&log.Id)
 	if err != nil {
 		level.Error(db.logger).Log("err", err, "msg", "Could not insert Log Device for device with ID "+log.DeviceId+" in database")
-		return err.Err()
+		return err
 	}
 	level.Info(db.logger).Log("msg", "Device Log with ID "+id+" inserted in database")
 	return nil

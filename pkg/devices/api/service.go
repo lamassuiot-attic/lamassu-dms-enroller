@@ -129,11 +129,14 @@ func (s *devicesService) GetDeviceById(ctx context.Context, deviceId string) (de
 }
 
 func (s *devicesService) DeleteDevice(ctx context.Context, id string) error {
-	/*err := s.devicesDb.DeleteDevice(id)
-	if err != nil {
-		return err
-	}*/
+	_ = s.RevokeDeviceCert(ctx, id)
 
+	/*
+		err := s.devicesDb.DeleteDevice(id)
+		if err != nil {
+			return err
+		}
+	*/
 	err := s.devicesDb.UpdateDeviceStatusByID(id, devicesModel.DeviceDecommisioned)
 	if err != nil {
 		return err
@@ -346,7 +349,6 @@ func (s *devicesService) RevokeDeviceCert(ctx context.Context, id string) error 
 	}
 
 	// revoke
-
 	certPool := x509.NewCertPool()
 	pem, err := ioutil.ReadFile("/home/ubuntu/Desktop/LAMASSU/lamassu-ca/localhost.crt")
 	if err != nil {
