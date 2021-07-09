@@ -5,7 +5,7 @@ import (
 	"io/ioutil"
 	"testing"
 
-	"github.com/lamassuiot/enroller/pkg/ca/configs"
+	"github.com/lamassuiot/enroller/pkg/scep/configs"
 	"github.com/lamassuiot/enroller/pkg/enroller/crypto"
 
 	stdjwt "github.com/dgrijalva/jwt-go"
