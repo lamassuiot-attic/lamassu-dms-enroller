@@ -24,6 +24,7 @@ import (
 	csrstore "github.com/lamassuiot/enroller/pkg/enroller/models/csr/store"
 	"github.com/lamassuiot/enroller/pkg/enroller/secrets"
 	"github.com/lamassuiot/lamassu-est/client/estclient"
+	"github.com/lamassuiot/lamassu-est/configs"
 	"os"
 	"strconv"
 	"strings"
@@ -349,10 +350,29 @@ func (s *enrollerService) approbeCSR(id int, csr csrmodel.CSR) error {
 		return err
 	}
 	//crt, err := s.signCSR(csrData)
-	crt, err := estclient.Enroll(csrData, "Lamassu-DMS") //TODO: Get CA name form somewhere else
+
+	//crt, err := estclient.Enroll(csrData, "Lamassu-DMS") //TODO: Get CA name form somewhere else
+
+	configStr, err := configs.NewConfigEnvClient("est")
 	if err != nil {
 		return err
 	}
+
+	cfg, err := configs.NewConfig(configStr)
+	if err != nil {
+		return err
+	}
+
+	client, err := estclient.NewClient(cfg)
+	if err != nil {
+		return err
+	}
+
+	crt, err := client.Enroll(csrData, "")
+	if err != nil {
+		return err
+	}
+
 	err = s.insertCertInDB(id, crt)
 	if err != nil {
 		return err
