@@ -158,7 +158,7 @@ func (db *DB) SelectByID(id int) (csr.CSR, error) {
 	`
 	row := db.QueryRow(sqlStatement, id)
 	var c csr.CSR
-	err := row.Scan(&c.Id, &c.Name, &c.CountryName, &c.StateOrProvinceName, &c.LocalityName, &c.OrganizationName, &c.OrganizationalUnitName, &c.CommonName, &c.EmailAddress, &c.Status, &c.CsrFilePath)
+	err := row.Scan(&c.Id, &c.Name, &c.CountryName, &c.StateOrProvinceName, &c.LocalityName, &c.OrganizationName, &c.OrganizationalUnitName, &c.CommonName, &c.EmailAddress, &c.Status, &c.CsrFilePath, &c.Url)
 	if err != nil {
 		level.Error(db.logger).Log("err", err, "msg", "Could not obtain CSR with ID "+strconv.Itoa(id)+" from database")
 		return csr.CSR{}, err
