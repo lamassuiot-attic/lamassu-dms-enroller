@@ -43,11 +43,11 @@ func checkDBAlive(db *sql.DB) error {
 func (db *DB) Insert(c csr.CSR) (int, error) {
 	id := 0
 	sqlStatement := `
-	INSERT INTO csr_store(name, country, state, locality, organization, organization_unit, email, common_name, status, csrPath)
-	VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+	INSERT INTO csr_store(name, country, state, locality, organization, organization_unit, email, common_name, status, csrPath, url)
+	VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 	RETURNING id;
 	`
-	err := db.QueryRow(sqlStatement, c.Name, c.CountryName, c.StateOrProvinceName, c.LocalityName, c.OrganizationName, c.OrganizationalUnitName, c.EmailAddress, c.CommonName, c.Status, c.CsrFilePath).Scan(&id)
+	err := db.QueryRow(sqlStatement, c.Name, c.CountryName, c.StateOrProvinceName, c.LocalityName, c.OrganizationName, c.OrganizationalUnitName, c.EmailAddress, c.CommonName, c.Status, c.CsrFilePath, c.Url).Scan(&id)
 	if err != nil {
 		level.Error(db.logger).Log("err", err, "msg", "Could not insert CSR with CN "+c.CommonName+" in database")
 		return -1, err
@@ -103,7 +103,7 @@ func (db *DB) SelectAllByCN(cn string) csr.CSRs {
 
 	for rows.Next() {
 		var c csr.CSR
-		err := rows.Scan(&c.Id, &c.Name, &c.CountryName, &c.StateOrProvinceName, &c.LocalityName, &c.OrganizationName, &c.OrganizationalUnitName, &c.CommonName, &c.EmailAddress, &c.Status, &c.CsrFilePath)
+		err := rows.Scan(&c.Id, &c.Name, &c.CountryName, &c.StateOrProvinceName, &c.LocalityName, &c.OrganizationName, &c.OrganizationalUnitName, &c.CommonName, &c.EmailAddress, &c.Status, &c.CsrFilePath, &c.Url)
 		if err != nil {
 			level.Error(db.logger).Log("err", err, "msg", "Unable to read database CSR for CN "+cn)
 			return csr.CSRs{CSRs: []csr.CSR{}}

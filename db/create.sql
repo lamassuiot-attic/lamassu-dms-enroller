@@ -9,7 +9,8 @@ CREATE TABLE csr_store (
     common_name TEXT,
     email TEXT,
     status TEXT,
-    csrPath TEXT
+    csrPath TEXT,
+    url TEXT
 );
 
 CREATE TABLE ca_store (

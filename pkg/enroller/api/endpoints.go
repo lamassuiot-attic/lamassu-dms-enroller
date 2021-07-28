@@ -172,6 +172,7 @@ type getCRTResponse struct {
 type postCSRRequest struct {
 	data    []byte
 	dmsName string
+	url     string
 }
 type postCSRFormRequest struct {
 	CSRForm csr.CSRForm
@@ -209,6 +210,11 @@ func (r getPendingCSRDBResponse) error() error { return r.Err }
 type getPendingCSRFileResponse struct {
 	Data []byte
 	Err  error
+}
+
+type postDirectCsr struct {
+	CSR string `json:"csr"`
+	URL string `json:"url"`
 }
 
 type putChangeCSRStatusRequest struct {

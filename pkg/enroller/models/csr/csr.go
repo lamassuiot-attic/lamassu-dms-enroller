@@ -12,6 +12,7 @@ type CSR struct {
 	EmailAddress           string `json:"mail,omitempty"`
 	Status                 string `json:"status"`
 	CsrFilePath            string `json:"csrpath,omitempty"`
+	Url                    string `json:"url"`
 }
 
 type CSRForm struct {
@@ -25,6 +26,7 @@ type CSRForm struct {
 	EmailAddress           string `json:"mail,omitempty"`
 	KeyType                string `json:"key_type"`
 	KeyBits                int    `json:"key_bits"`
+	Url                    string `json:"url"`
 }
 
 type CSRs struct {

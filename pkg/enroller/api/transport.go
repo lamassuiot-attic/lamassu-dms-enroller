@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"strconv"
@@ -130,22 +129,19 @@ func decodePostCSRFormRequest(ctx context.Context, r *http.Request) (request int
 }
 
 func decodePostCSRRequest(ctx context.Context, r *http.Request) (request interface{}, err error) {
-	contentType := r.Header.Get("Content-Type")
 	vars := mux.Vars(r)
-	if contentType != "application/pkcs10" {
-		return nil, ErrIncorrectType
-	}
-	data, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		return nil, ErrEmptyBody
-	}
+
+	var csrRequest postDirectCsr
+	json.NewDecoder(r.Body).Decode((&csrRequest))
+
 	name, ok := vars["name"]
 	if !ok {
 		return nil, ErrEmptyDMSName
 	}
 	req := postCSRRequest{
-		data:    data,
+		data:    []byte(csrRequest.CSR),
 		dmsName: name,
+		url:     csrRequest.URL,
 	}
 	return req, nil
 }
