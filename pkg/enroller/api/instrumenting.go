@@ -36,14 +36,14 @@ func (mw *instrumentingMiddleware) Health(ctx context.Context) bool {
 	return mw.next.Health(ctx)
 }
 
-func (mw *instrumentingMiddleware) PostCSR(ctx context.Context, data []byte, dmsName string) (csr csrmodel.CSR, err error) {
+func (mw *instrumentingMiddleware) PostCSR(ctx context.Context, data []byte, dmsName string, url string) (csr csrmodel.CSR, err error) {
 	defer func(begin time.Time) {
 		lvs := []string{"method", "PostCSR", "error", fmt.Sprint(err != nil)}
 		mw.requestCount.With(lvs...).Add(1)
 		mw.requestLatency.With(lvs...).Observe(time.Since(begin).Seconds())
 	}(time.Now())
 
-	return mw.next.PostCSR(ctx, data, dmsName)
+	return mw.next.PostCSR(ctx, data, dmsName, url)
 }
 
 func (mw *instrumentingMiddleware) PostCSRForm(ctx context.Context, csrForm csrmodel.CSRForm) (str string, csr csrmodel.CSR, err error) {

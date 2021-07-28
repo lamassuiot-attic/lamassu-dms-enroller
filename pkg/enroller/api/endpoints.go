@@ -92,7 +92,7 @@ func MakeHealthEndpoint(s Service) endpoint.Endpoint {
 func MakePostCSREndpoint(s Service) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
 		req := request.(postCSRRequest)
-		csr, e := s.PostCSR(ctx, req.data, req.dmsName)
+		csr, e := s.PostCSR(ctx, req.data, req.dmsName, req.url)
 		return postCSRResponse{CSR: csr, Err: e}, nil
 	}
 }

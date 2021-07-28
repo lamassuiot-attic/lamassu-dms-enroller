@@ -14,6 +14,12 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"os"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
+
 	"github.com/go-kit/kit/auth/jwt"
 	"github.com/lamassuiot/enroller/pkg/enroller/auth"
 	"github.com/lamassuiot/enroller/pkg/enroller/crypto"
@@ -25,16 +31,11 @@ import (
 	"github.com/lamassuiot/enroller/pkg/enroller/secrets"
 	"github.com/lamassuiot/lamassu-est/client/estclient"
 	"github.com/lamassuiot/lamassu-est/configs"
-	"os"
-	"strconv"
-	"strings"
-	"sync"
-	"time"
 )
 
 type Service interface {
 	Health(ctx context.Context) bool
-	PostCSR(ctx context.Context, data []byte, dmsName string) (csrmodel.CSR, error)
+	PostCSR(ctx context.Context, data []byte, dmsName string, url string) (csrmodel.CSR, error)
 	PostCSRForm(ctx context.Context, csrForm csrmodel.CSRForm) (string, csrmodel.CSR, error)
 	GetPendingCSRs(ctx context.Context) csrmodel.CSRs
 	GetPendingCSRDB(ctx context.Context, id int) (csrmodel.CSR, error)
@@ -95,12 +96,13 @@ func (s *enrollerService) Health(ctx context.Context) bool {
 	return true
 }
 
-func (s *enrollerService) PostCSR(ctx context.Context, data []byte, dmsName string) (csrmodel.CSR, error) {
+func (s *enrollerService) PostCSR(ctx context.Context, data []byte, dmsName string, url string) (csrmodel.CSR, error) {
 	csr, err := parseCSRDataModel(data)
 	if err != nil {
 		return csrmodel.CSR{}, err
 	}
 	csr.Name = dmsName
+	csr.Url = url
 	csr, err = s.insertCSRInDB(csr)
 	if err != nil {
 		return csrmodel.CSR{}, err
@@ -130,7 +132,7 @@ func (s *enrollerService) PostCSRForm(ctx context.Context, csrForm csr.CSRForm) 
 			},
 		))
 
-		csr, err := s.PostCSR(ctx, []byte(csrEncoded), csrForm.Name)
+		csr, err := s.PostCSR(ctx, []byte(csrEncoded), csrForm.Name, csrForm.Url)
 		if err != nil {
 			return "", csrmodel.CSR{}, err
 		} else {
@@ -169,7 +171,7 @@ func (s *enrollerService) PostCSRForm(ctx context.Context, csrForm csr.CSRForm) 
 			return "", csrmodel.CSR{}, err
 		}
 		csrEncoded := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE REQUEST", Bytes: csrBytes})
-		csr, err := s.PostCSR(ctx, []byte(csrEncoded), csrForm.Name)
+		csr, err := s.PostCSR(ctx, []byte(csrEncoded), csrForm.Name, csrForm.Url)
 		if err != nil {
 			return "", csrmodel.CSR{}, err
 		} else {
