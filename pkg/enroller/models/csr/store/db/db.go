@@ -71,7 +71,7 @@ func (db *DB) SelectAll() csr.CSRs {
 
 	for rows.Next() {
 		var c csr.CSR
-		err := rows.Scan(&c.Id, &c.Name, &c.CountryName, &c.StateOrProvinceName, &c.LocalityName, &c.OrganizationName, &c.OrganizationalUnitName, &c.CommonName, &c.EmailAddress, &c.Status, &c.CsrFilePath)
+		err := rows.Scan(&c.Id, &c.Name, &c.CountryName, &c.StateOrProvinceName, &c.LocalityName, &c.OrganizationName, &c.OrganizationalUnitName, &c.CommonName, &c.EmailAddress, &c.Status, &c.CsrFilePath, &c.Url)
 		if err != nil {
 			level.Error(db.logger).Log("err", err, "msg", "Unable to read database CSR row")
 			return csr.CSRs{CSRs: []csr.CSR{}}
@@ -134,7 +134,7 @@ func (db *DB) SelectByStatus(status string) csr.CSRs {
 
 	for rows.Next() {
 		var c csr.CSR
-		err := rows.Scan(&c.Id, &c.Name, &c.CountryName, &c.StateOrProvinceName, &c.LocalityName, &c.OrganizationName, &c.OrganizationalUnitName, &c.CommonName, &c.EmailAddress, &c.Status, &c.CsrFilePath)
+		err := rows.Scan(&c.Id, &c.Name, &c.CountryName, &c.StateOrProvinceName, &c.LocalityName, &c.OrganizationName, &c.OrganizationalUnitName, &c.CommonName, &c.EmailAddress, &c.Status, &c.CsrFilePath, &c.Url)
 		if err != nil {
 			level.Error(db.logger).Log("err", err, "msg", "Unable to read database CSR with status "+status)
 			return csr.CSRs{CSRs: []csr.CSR{}}
