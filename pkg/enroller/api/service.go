@@ -363,7 +363,7 @@ func (s *enrollerService) approbeCSR(id int, csr csrmodel.CSR) error {
 	cfg, err := configs.NewConfig(configStr)
 	if err != nil {
 		return err
-	}-
+	}
 
 	client, err := estclient.NewClient(cfg)
 	if err != nil {
