@@ -9,7 +9,7 @@ require (
 	github.com/gorilla/mux v1.7.4
 	github.com/hashicorp/consul/api v1.8.1
 	github.com/kelseyhightower/envconfig v1.4.0
-	github.com/lamassuiot/lamassu-est v0.1.3
+	github.com/lamassuiot/lamassu-est v0.1.5-0.20210729064400-7d668156c272
 	github.com/lib/pq v1.8.0
 	github.com/nvellon/hal v0.3.0
 	github.com/opentracing/opentracing-go v1.2.0
