@@ -6,10 +6,12 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"path"
 	"time"
 
 	"github.com/lamassuiot/enroller/pkg/enroller/api"
 	"github.com/lamassuiot/enroller/pkg/enroller/auth"
+	"github.com/go-openapi/runtime/middleware"
 	"github.com/lamassuiot/enroller/pkg/enroller/configs"
 	"github.com/lamassuiot/enroller/pkg/enroller/discovery/consul"
 	certsdb "github.com/lamassuiot/enroller/pkg/enroller/models/certs/store/db"
@@ -121,8 +123,14 @@ func main() {
 	mux := http.NewServeMux()
 
 	mux.Handle("/v1/", api.MakeHTTPHandler(s, log.With(logger, "component", "HTTPS"), auth, tracer))
-	http.Handle("/", accessControl(mux, cfg.EnrollerUIProtocol, cfg.EnrollerUIHost, cfg.EnrollerUIPort))
+	http.Handle("/v1/docs", middleware.SwaggerUI(middleware.SwaggerUIOpts{
+		BasePath: "/v1/",
+		SpecURL:  path.Join("/", "swagger.json"),
+		Path:     "docs",
+	}, mux))
+	http.Handle("/", accessControl(mux, "", "", ""))
 	http.Handle("/metrics", promhttp.Handler())
+	http.Handle("/swagger.json", http.FileServer(http.Dir("./docs")))
 
 	errs := make(chan error)
 	go func() {

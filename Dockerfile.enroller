@@ -8,4 +8,5 @@ RUN CGO_ENABLED=0 go build -o enroller ./cmd/enroller/main.go
 
 FROM scratch
 COPY --from=0 /app/enroller /
+COPY ./docs/swagger.json /docs/swagger.json
 CMD ["/enroller"]
