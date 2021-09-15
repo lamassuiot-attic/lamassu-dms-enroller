@@ -11,7 +11,7 @@
   },
   "servers": [
     {
-      "url": "https://jon.io:8085/v1"
+      "url": "https://dev.lamassu.io:8085/v1"
     }
   ],
   "paths": {
@@ -22,12 +22,9 @@
         ],
         "summary": "Get DMS information",
         "operationId": "GetDMS",
-        "parameters": [
+        "security": [
           {
-            "name": "Authorization",
-            "in": "header",
-            "description": "JWT Toker usar Bearer {token}",
-            "schema": {}
+            "bearerAuth": []
           }
         ],
         "responses": {
@@ -51,13 +48,12 @@
         ],
         "summary": "Create DMS",
         "operationId": "CreateDMS",
-        "parameters": [
+        "security": [
           {
-            "name": "Authorization",
-            "in": "header",
-            "description": "JWT Toker usar Bearer {token}",
-            "schema": {}
-          },
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
           {
             "name": "name",
             "in": "path",
@@ -87,18 +83,17 @@
         ],
         "summary": "Get certificate of DMS",
         "operationId": "GetcertDMS",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "parameters": [
           {
             "name": "id",
             "in": "path",
             "description": "Get certificate of DMS",
             "required": true,
-            "schema": {}
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "description": "JWT Toker usar Bearer {token}",
             "schema": {}
           }
         ],
@@ -123,18 +118,17 @@
         ],
         "summary": "Change CSR Status",
         "operationId": "ChangeCSR",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "parameters": [
           {
             "name": "id",
             "in": "path",
             "description": "DMS ID",
             "required": true,
-            "schema": {}
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "description": "JWT Toker usar Bearer {token}",
             "schema": {}
           }
         ],
@@ -262,23 +256,19 @@
         },
         "description": "The parameters for create DMS",
         "x-go-package": "github.com/lamassuiot/enroller/pkg/enroller/models/csr"
-      },
-      "GetCertificateDMS": {
-        "required": [
-          "id"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "description": "Device Manufacturing system ID",
-            "example": "1",
-            "x-go-name": "Id "
-          }
-        },
-        "description": "Get certificate of DMS",
-        "x-go-package": "github.com/lamassuiot/enroller/pkg/enroller/models/csr"
+      }
+    },
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
       }
     }
-  }
+  },
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ]
 }
