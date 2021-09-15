@@ -1,0 +1,284 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Device Manufacturing System",
+    "description": "The purpose of Lamassu DMS is to provide a wrapper API to manage\nDMS registered in Lamassu PKI.",
+    "license": {
+      "name": "MPL-2.0",
+      "url": "https://opensource.org/licenses/MPL-2.0"
+    },
+    "version": "0.0.1"
+  },
+  "servers": [
+    {
+      "url": "https://jon.io:8085/v1"
+    }
+  ],
+  "paths": {
+    "/csrs": {
+      "get": {
+        "tags": [
+          "Device Manufacturing System"
+        ],
+        "summary": "Get DMS information",
+        "operationId": "GetDMS",
+        "parameters": [
+          {
+            "name": "Authorization",
+            "in": "header",
+            "description": "JWT Toker usar Bearer {token}",
+            "schema": {}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Get DMS information",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateDMS"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/csrs/{name}/form": {
+      "post": {
+        "tags": [
+          "Device Manufacturing System"
+        ],
+        "summary": "Create DMS",
+        "operationId": "CreateDMS",
+        "parameters": [
+          {
+            "name": "Authorization",
+            "in": "header",
+            "description": "JWT Toker usar Bearer {token}",
+            "schema": {}
+          },
+          {
+            "name": "name",
+            "in": "path",
+            "description": "DMS name",
+            "required": true,
+            "schema": {}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/csrs/{id}/crt": {
+      "get": {
+        "tags": [
+          "Device Manufacturing System"
+        ],
+        "summary": "Get certificate of DMS",
+        "operationId": "GetcertDMS",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Get certificate of DMS",
+            "required": true,
+            "schema": {}
+          },
+          {
+            "name": "Authorization",
+            "in": "header",
+            "description": "JWT Toker usar Bearer {token}",
+            "schema": {}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/csrs/{id}": {
+      "put": {
+        "tags": [
+          "Device Manufacturing System"
+        ],
+        "summary": "Change CSR Status",
+        "operationId": "ChangeCSR",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "DMS ID",
+            "required": true,
+            "schema": {}
+          },
+          {
+            "name": "Authorization",
+            "in": "header",
+            "description": "JWT Toker usar Bearer {token}",
+            "schema": {}
+          }
+        ],
+        "requestBody": {
+          "description": "Change CSR Status",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDMS"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "x-codegen-request-body-name": "Change CSR"
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": [
+          "Service Status"
+        ],
+        "summary": "Gets service health.",
+        "operationId": "health",
+        "responses": {
+          "200": {
+            "$ref": "#/components/schemas/HealthResponse"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "HealthResponse": {
+        "type": "object",
+        "properties": {
+          "healthy": {
+            "type": "boolean",
+            "x-go-name": "Healthy"
+          }
+        },
+        "x-go-package": "github.com/lamassuiot/lamassu-ca/pkg/api"
+      },
+      "CreateDMS": {
+        "required": [
+          "c",
+          "cn",
+          "csrpath",
+          "email",
+          "l",
+          "o",
+          "ou",
+          "st",
+          "status"
+        ],
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "description": "Email address",
+            "example": "mail@ikerlan.es",
+            "x-go-name": "EmailAddress"
+          },
+          "cn": {
+            "type": "string",
+            "description": "Device manufacturing system name",
+            "example": "Lamassu Default DMS",
+            "x-go-name": "CommonName"
+          },
+          "csrpath": {
+            "type": "string",
+            "description": "CSR File Path",
+            "example": "/var/lib/lamassuiot/6.csr",
+            "x-go-name": "CsrFilePath"
+          },
+          "c": {
+            "type": "string",
+            "description": "Country Name of the DMS",
+            "example": "ES",
+            "x-go-name": "CountryName"
+          },
+          "status": {
+            "type": "string",
+            "description": "The status of the CA",
+            "example": "DENIED",
+            "x-go-name": "Status"
+          },
+          "l": {
+            "type": "string",
+            "description": "Locality of the DMS",
+            "example": "Arrasate",
+            "x-go-name": "LocalityName"
+          },
+          "o": {
+            "type": "string",
+            "description": "Organization of the DMS",
+            "example": "Lamassu IoT",
+            "x-go-name": "OrganizationName"
+          },
+          "st": {
+            "type": "string",
+            "description": "State of the DMS",
+            "example": "Guipuzcoa",
+            "x-go-name": "StateOrProvinceName"
+          },
+          "ou": {
+            "type": "string",
+            "description": "Organization Unit of the CA certificate",
+            "example": " Lamassu IoT department 1",
+            "x-go-name": "OrganizationalUnitName"
+          }
+        },
+        "description": "The parameters for create DMS",
+        "x-go-package": "github.com/lamassuiot/enroller/pkg/enroller/models/csr"
+      },
+      "GetCertificateDMS": {
+        "required": [
+          "id"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Device Manufacturing system ID",
+            "example": "1",
+            "x-go-name": "Id "
+          }
+        },
+        "description": "Get certificate of DMS",
+        "x-go-package": "github.com/lamassuiot/enroller/pkg/enroller/models/csr"
+      }
+    }
+  }
+}

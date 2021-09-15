@@ -4,7 +4,7 @@ import "github.com/kelseyhightower/envconfig"
 
 type Config struct {
 	Port string
-
+	
 	PostgresUser     string
 	PostgresDB       string
 	PostgresPassword string
