@@ -3,8 +3,15 @@ package api
 import (
 	"bytes"
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/rsa"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"database/sql"
+	"encoding/asn1"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"os"
@@ -13,6 +20,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/go-kit/kit/auth/jwt"
 	"github.com/lamassuiot/enroller/pkg/enroller/auth"
 	"github.com/lamassuiot/enroller/pkg/enroller/crypto"
 	"github.com/lamassuiot/enroller/pkg/enroller/models/certs"
@@ -21,13 +29,14 @@ import (
 	csrmodel "github.com/lamassuiot/enroller/pkg/enroller/models/csr"
 	csrstore "github.com/lamassuiot/enroller/pkg/enroller/models/csr/store"
 	"github.com/lamassuiot/enroller/pkg/enroller/secrets"
-
-	"github.com/go-kit/kit/auth/jwt"
+	"github.com/lamassuiot/lamassu-est/client/estclient"
+	"github.com/lamassuiot/lamassu-est/configs"
 )
 
 type Service interface {
 	Health(ctx context.Context) bool
-	PostCSR(ctx context.Context, data []byte) (csrmodel.CSR, error)
+	PostCSR(ctx context.Context, data []byte, dmsName string, url string) (csrmodel.CSR, error)
+	PostCSRForm(ctx context.Context, csrForm csrmodel.CSRForm) (string, csrmodel.CSR, error)
 	GetPendingCSRs(ctx context.Context) csrmodel.CSRs
 	GetPendingCSRDB(ctx context.Context, id int) (csrmodel.CSR, error)
 	GetPendingCSRFile(ctx context.Context, id int) ([]byte, error)
@@ -56,6 +65,7 @@ var (
 	ErrInvalidDenyOp    = errors.New("invalid operation, only pending status CSRs can be denied")            //400
 	ErrInvalidDeleteOp  = errors.New("invalid operation, only denied or revoked status CSRs can be deleted") //400
 	ErrIncorrectType    = errors.New("unsupported media type")                                               //415
+	ErrEmptyDMSName     = errors.New("empty DMS name")                                                       //415
 	ErrEmptyBody        = errors.New("empty body")
 
 	//Server errors
@@ -86,11 +96,13 @@ func (s *enrollerService) Health(ctx context.Context) bool {
 	return true
 }
 
-func (s *enrollerService) PostCSR(ctx context.Context, data []byte) (csrmodel.CSR, error) {
+func (s *enrollerService) PostCSR(ctx context.Context, data []byte, dmsName string, url string) (csrmodel.CSR, error) {
 	csr, err := parseCSRDataModel(data)
 	if err != nil {
 		return csrmodel.CSR{}, err
 	}
+	csr.Name = dmsName
+	csr.Url = url
 	csr, err = s.insertCSRInDB(csr)
 	if err != nil {
 		return csrmodel.CSR{}, err
@@ -100,6 +112,104 @@ func (s *enrollerService) PostCSR(ctx context.Context, data []byte) (csrmodel.CS
 		return csrmodel.CSR{}, err
 	}
 	return csr, nil
+}
+
+func (s *enrollerService) PostCSRForm(ctx context.Context, csrForm csr.CSRForm) (string, csrmodel.CSR, error) {
+	if csrForm.KeyType == "rsa" {
+		privKey, _ := rsa.GenerateKey(rand.Reader, csrForm.KeyBits)
+		csrBytes, err := _generateCSR(ctx, csrForm.KeyType, csrForm.KeyBits, privKey, csrForm)
+		if err != nil {
+			return "", csrmodel.CSR{}, err
+		}
+
+		csrEncoded := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE REQUEST", Bytes: csrBytes})
+
+		privkey_bytes := x509.MarshalPKCS1PrivateKey(privKey)
+		privkey_pem := string(pem.EncodeToMemory(
+			&pem.Block{
+				Type:  "RSA PRIVATE KEY",
+				Bytes: privkey_bytes,
+			},
+		))
+
+		csr, err := s.PostCSR(ctx, []byte(csrEncoded), csrForm.Name, csrForm.Url)
+		if err != nil {
+			return "", csrmodel.CSR{}, err
+		} else {
+			return privkey_pem, csr, nil
+		}
+	} else if csrForm.KeyType == "ec" {
+		var priv *ecdsa.PrivateKey
+		var err error
+		switch csrForm.KeyBits {
+		case 224:
+			priv, err = ecdsa.GenerateKey(elliptic.P224(), rand.Reader)
+		case 256:
+			priv, err = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		case 384:
+			priv, err = ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
+		case 521:
+			priv, err = ecdsa.GenerateKey(elliptic.P521(), rand.Reader)
+		default:
+			err = errors.New("Unsupported key length")
+		}
+		if err != nil {
+			return "", csrmodel.CSR{}, err
+		}
+		privkey_bytesm, err := x509.MarshalECPrivateKey(priv)
+		if err != nil {
+			return "", csrmodel.CSR{}, err
+		}
+		privkey_pem := string(pem.EncodeToMemory(
+			&pem.Block{
+				Type:  "PRIVATE KEY",
+				Bytes: privkey_bytesm,
+			},
+		))
+		csrBytes, err := _generateCSR(ctx, csrForm.KeyType, csrForm.KeyBits, priv, csrForm)
+		if err != nil {
+			return "", csrmodel.CSR{}, err
+		}
+		csrEncoded := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE REQUEST", Bytes: csrBytes})
+		csr, err := s.PostCSR(ctx, []byte(csrEncoded), csrForm.Name, csrForm.Url)
+		if err != nil {
+			return "", csrmodel.CSR{}, err
+		} else {
+			return privkey_pem, csr, nil
+		}
+	} else {
+		return "", csrmodel.CSR{}, errors.New("Invalid key format")
+	}
+}
+
+func _generateCSR(ctx context.Context, keyType string, keyBits int, priv interface{}, csrForm csr.CSRForm) ([]byte, error) {
+	var signingAlgorithm x509.SignatureAlgorithm
+	if keyType == "ec" {
+		signingAlgorithm = x509.ECDSAWithSHA512
+	} else {
+		signingAlgorithm = x509.SHA512WithRSA
+	}
+	//emailAddress := csrForm.EmailAddress
+	subj := pkix.Name{
+		CommonName:         csrForm.CommonName,
+		Country:            []string{csrForm.CountryName},
+		Province:           []string{csrForm.StateOrProvinceName},
+		Locality:           []string{csrForm.LocalityName},
+		Organization:       []string{csrForm.OrganizationName},
+		OrganizationalUnit: []string{csrForm.OrganizationalUnitName},
+	}
+	rawSubj := subj.ToRDNSequence()
+	/*rawSubj = append(rawSubj, []pkix.AttributeTypeAndValue{
+		{Type: oidEmailAddress, Value: emailAddress},
+	})*/
+	asn1Subj, _ := asn1.Marshal(rawSubj)
+	template := x509.CertificateRequest{
+		RawSubject: asn1Subj,
+		//EmailAddresses:     []string{emailAddress},
+		SignatureAlgorithm: signingAlgorithm,
+	}
+	csrBytes, err := x509.CreateCertificateRequest(rand.Reader, &template, priv)
+	return csrBytes, err
 }
 
 func parseCSRDataModel(data []byte) (csrmodel.CSR, error) {
@@ -189,7 +299,7 @@ func (s *enrollerService) PutChangeCSRStatus(ctx context.Context, csr csrmodel.C
 	}
 
 	switch status := csr.Status; status {
-	case csrmodel.ApprobedStatus:
+	case csrmodel.ApprovedStatus:
 		if prevCSR.Status == csrmodel.PendingStatus {
 			err = s.approbeCSR(id, csr)
 			if err != nil {
@@ -199,7 +309,7 @@ func (s *enrollerService) PutChangeCSRStatus(ctx context.Context, csr csrmodel.C
 			return csrmodel.CSR{}, ErrInvalidApprobeOp
 		}
 	case csrmodel.RevokedStatus:
-		if prevCSR.Status == csrmodel.ApprobedStatus {
+		if prevCSR.Status == csrmodel.ApprovedStatus {
 			_, err = s.csrDBStore.UpdateByID(id, csr)
 			if err != nil {
 				return csrmodel.CSR{}, ErrUpdateCSR
@@ -234,7 +344,6 @@ func (s *enrollerService) revokeCert(id int) error {
 		return ErrRevokeCert
 	}
 	return nil
-
 }
 
 func (s *enrollerService) approbeCSR(id int, csr csrmodel.CSR) error {
@@ -242,10 +351,30 @@ func (s *enrollerService) approbeCSR(id int, csr csrmodel.CSR) error {
 	if err != nil {
 		return err
 	}
-	crt, err := s.signCSR(csrData)
+	//crt, err := s.signCSR(csrData)
+
+	//crt, err := estclient.Enroll(csrData, "Lamassu-DMS") //TODO: Get CA name form somewhere else
+
+	configStr, err := configs.NewConfigEnvClient("est")
 	if err != nil {
 		return err
 	}
+
+	cfg, err := configs.NewConfig(configStr)
+	if err != nil {
+		return err
+	}
+
+	client, err := estclient.NewClient(cfg)
+	if err != nil {
+		return err
+	}
+
+	crt, err := client.Enroll(csrData, "")
+	if err != nil {
+		return err
+	}
+
 	err = s.insertCertInDB(id, crt)
 	if err != nil {
 		return err
@@ -259,7 +388,6 @@ func (s *enrollerService) approbeCSR(id int, csr csrmodel.CSR) error {
 		return ErrUpdateCSR
 	}
 	return nil
-
 }
 
 func (s *enrollerService) signCSR(csr *x509.CertificateRequest) (*x509.Certificate, error) {

@@ -13,6 +13,7 @@ import (
 type Endpoints struct {
 	HealthEndpoint             endpoint.Endpoint
 	PostCSREndpoint            endpoint.Endpoint
+	PostCSRFormEndpoint        endpoint.Endpoint
 	GetPendingCSRsEndpoint     endpoint.Endpoint
 	GetPendingCSRDBEndpoint    endpoint.Endpoint
 	GetPendingCSRFileEndpoint  endpoint.Endpoint
@@ -31,6 +32,11 @@ func MakeServerEndpoints(s Service, otTracer stdopentracing.Tracer) Endpoints {
 	{
 		postCSREndpoint = MakePostCSREndpoint(s)
 		postCSREndpoint = opentracing.TraceServer(otTracer, "PostCSR")(postCSREndpoint)
+	}
+	var postCSRFormEndpoint endpoint.Endpoint
+	{
+		postCSRFormEndpoint = MakePostCSRFormEndpoint(s)
+		postCSRFormEndpoint = opentracing.TraceServer(otTracer, "PostCSRForm")(postCSRFormEndpoint)
 	}
 	var getPendingCSRsEndpoint endpoint.Endpoint
 	{
@@ -66,6 +72,7 @@ func MakeServerEndpoints(s Service, otTracer stdopentracing.Tracer) Endpoints {
 	return Endpoints{
 		HealthEndpoint:             healthEndpoint,
 		PostCSREndpoint:            postCSREndpoint,
+		PostCSRFormEndpoint:        postCSRFormEndpoint,
 		GetPendingCSRsEndpoint:     getPendingCSRsEndpoint,
 		GetPendingCSRDBEndpoint:    getPendingCSRDBEndpoint,
 		GetPendingCSRFileEndpoint:  getPendingCSRFileEndpoint,
@@ -85,8 +92,16 @@ func MakeHealthEndpoint(s Service) endpoint.Endpoint {
 func MakePostCSREndpoint(s Service) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
 		req := request.(postCSRRequest)
-		csr, e := s.PostCSR(ctx, req.data)
+		csr, e := s.PostCSR(ctx, req.data, req.dmsName, req.url)
 		return postCSRResponse{CSR: csr, Err: e}, nil
+	}
+}
+
+func MakePostCSRFormEndpoint(s Service) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
+		req := request.(postCSRFormRequest)
+		privKey, csr, e := s.PostCSRForm(ctx, req.CSRForm)
+		return postCSRFormResponse{PrivKey: privKey, CSR: csr, Err: e}, nil
 	}
 }
 
@@ -155,12 +170,22 @@ type getCRTResponse struct {
 }
 
 type postCSRRequest struct {
-	data []byte
+	data    []byte
+	dmsName string
+	url     string
+}
+type postCSRFormRequest struct {
+	CSRForm csr.CSRForm
 }
 
 type postCSRResponse struct {
 	CSR csr.CSR `json:"csr,omitempty"`
 	Err error   `json:"err,omitempty"`
+}
+type postCSRFormResponse struct {
+	CSR     csr.CSR `json:"csr,omitempty"`
+	PrivKey string  `json:"priv_key,omitempty"`
+	Err     error   `json:"err,omitempty"`
 }
 
 func (r postCSRResponse) error() error { return r.Err }
@@ -185,6 +210,11 @@ func (r getPendingCSRDBResponse) error() error { return r.Err }
 type getPendingCSRFileResponse struct {
 	Data []byte
 	Err  error
+}
+
+type postDirectCsr struct {
+	CSR string `json:"csr"`
+	URL string `json:"url"`
 }
 
 type putChangeCSRStatusRequest struct {

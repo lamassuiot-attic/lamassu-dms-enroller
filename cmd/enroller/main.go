@@ -6,9 +6,12 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"path"
+	"time"
 
 	"github.com/lamassuiot/enroller/pkg/enroller/api"
 	"github.com/lamassuiot/enroller/pkg/enroller/auth"
+	"github.com/go-openapi/runtime/middleware"
 	"github.com/lamassuiot/enroller/pkg/enroller/configs"
 	"github.com/lamassuiot/enroller/pkg/enroller/discovery/consul"
 	certsdb "github.com/lamassuiot/enroller/pkg/enroller/models/certs/store/db"
@@ -44,9 +47,11 @@ func main() {
 	csrConnStr := "dbname=" + cfg.PostgresDB + " user=" + cfg.PostgresUser + " password=" + cfg.PostgresPassword + " host=" + cfg.PostgresHostname + " port=" + cfg.PostgresPort + " sslmode=disable"
 	csrdb, err := csrdb.NewDB("postgres", csrConnStr, logger)
 	if err != nil {
-		level.Error(logger).Log("err", err, "msg", "Could not start connection with CSRs database")
+		level.Error(logger).Log("err", err, "msg", "Could not start connection with Devices database. Will sleep for 5 seconds and exit the program")
+		time.Sleep(5 * time.Second)
 		os.Exit(1)
 	}
+
 	level.Info(logger).Log("msg", "Connection established with CSRs database")
 	csrfile := csrfile.NewFile(cfg.HomePath, logger)
 	level.Info(logger).Log("msg", "CSRs filesystem home path created")
@@ -118,8 +123,14 @@ func main() {
 	mux := http.NewServeMux()
 
 	mux.Handle("/v1/", api.MakeHTTPHandler(s, log.With(logger, "component", "HTTPS"), auth, tracer))
-	http.Handle("/", accessControl(mux, cfg.EnrollerUIProtocol, cfg.EnrollerUIHost, cfg.EnrollerUIPort))
+	http.Handle("/v1/docs", middleware.SwaggerUI(middleware.SwaggerUIOpts{
+		BasePath: "/v1/",
+		SpecURL:  path.Join("/", "swagger.json"),
+		Path:     "docs",
+	}, mux))
+	http.Handle("/", accessControl(mux, "", "", ""))
 	http.Handle("/metrics", promhttp.Handler())
+	http.Handle("/swagger.json", http.FileServer(http.Dir("./docs")))
 
 	errs := make(chan error)
 	go func() {
@@ -145,13 +156,13 @@ func main() {
 
 func accessControl(h http.Handler, enrollerUIProtocol string, enrollerUIHost string, enrollerUIPort string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var uiURL string
+		/*var uiURL string
 		if enrollerUIPort == "" {
 			uiURL = enrollerUIProtocol + "://" + enrollerUIHost
 		} else {
 			uiURL = enrollerUIProtocol + "://" + enrollerUIHost + ":" + enrollerUIPort
-		}
-		w.Header().Set("Access-Control-Allow-Origin", uiURL)
+		}*/
+		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, DELETE")
 		w.Header().Set("Access-Control-Allow-Headers", "Origin, Content-Type, Authorization")
 

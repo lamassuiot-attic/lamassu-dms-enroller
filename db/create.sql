@@ -1,14 +1,16 @@
 CREATE TABLE csr_store (
     id SERIAL,
-    c TEXT,
-    st TEXT,
-    l TEXT,
-    o TEXT,
-    ou TEXT,
-    cn TEXT,
+    name TEXT,
+    country TEXT,
+    state TEXT,
+    locality TEXT,
+    organization TEXT,
+    organization_unit TEXT,
+    common_name TEXT,
     email TEXT,
     status TEXT,
-    csrPath TEXT
+    csrPath TEXT,
+    url TEXT
 );
 
 CREATE TABLE ca_store (

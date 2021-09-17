@@ -3,7 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
+	"errors"
 	"net/http"
 	"os"
 	"strconv"
@@ -47,11 +47,17 @@ func MakeHTTPHandler(s Service, logger log.Logger, auth auth.Auth, otTracer stdo
 		append(options, httptransport.ServerBefore(opentracing.HTTPToContext(otTracer, "Health", logger)))...,
 	))
 
-	r.Methods("POST").Path("/v1/csrs").Handler(httptransport.NewServer(
+	r.Methods("POST").Path("/v1/csrs/{name}").Handler(httptransport.NewServer(
 		jwt.NewParser(auth.Kf, stdjwt.SigningMethodRS256, auth.KeycloakClaimsFactory)(e.PostCSREndpoint),
 		decodePostCSRRequest,
 		encodePostCSRResponse,
 		append(options, httptransport.ServerBefore(opentracing.HTTPToContext(otTracer, "PostCSR", logger)))...,
+	))
+	r.Methods("POST").Path("/v1/csrs/{name}/form").Handler(httptransport.NewServer(
+		jwt.NewParser(auth.Kf, stdjwt.SigningMethodRS256, auth.KeycloakClaimsFactory)(e.PostCSRFormEndpoint),
+		decodePostCSRFormRequest,
+		encodeResponse,
+		append(options, httptransport.ServerBefore(opentracing.HTTPToContext(otTracer, "PostCSRForm", logger)))...,
 	))
 
 	r.Methods("GET").Path("/v1/csrs").Handler(httptransport.NewServer(
@@ -104,20 +110,40 @@ func decodeHealthRequest(ctx context.Context, r *http.Request) (request interfac
 	return req, nil
 }
 
-func decodePostCSRRequest(ctx context.Context, r *http.Request) (request interface{}, err error) {
-	contentType := r.Header.Get("Content-Type")
-	if contentType != "application/pkcs10" {
-		return nil, ErrIncorrectType
+func decodePostCSRFormRequest(ctx context.Context, r *http.Request) (request interface{}, err error) {
+	vars := mux.Vars(r)
+	name, ok := vars["name"]
+	if !ok {
+		return nil, ErrEmptyDMSName
 	}
-	data, err := ioutil.ReadAll(r.Body)
+	var csrForm csr.CSRForm
+	json.NewDecoder(r.Body).Decode((&csrForm))
 	if err != nil {
-		return nil, ErrEmptyBody
+		return nil, errors.New("Cannot decode JSON request")
 	}
-	req := postCSRRequest{
-		data: data,
+	csrForm.Name = name
+	req := postCSRFormRequest{
+		CSRForm: csrForm,
 	}
 	return req, nil
+}
 
+func decodePostCSRRequest(ctx context.Context, r *http.Request) (request interface{}, err error) {
+	vars := mux.Vars(r)
+
+	var csrRequest postDirectCsr
+	json.NewDecoder(r.Body).Decode((&csrRequest))
+
+	name, ok := vars["name"]
+	if !ok {
+		return nil, ErrEmptyDMSName
+	}
+	req := postCSRRequest{
+		data:    []byte(csrRequest.CSR),
+		dmsName: name,
+		url:     csrRequest.URL,
+	}
+	return req, nil
 }
 
 func decodeGetPendingCSRsRequest(ctx context.Context, r *http.Request) (request interface{}, err error) {

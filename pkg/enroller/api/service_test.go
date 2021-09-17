@@ -267,10 +267,10 @@ func TestPutChangeCSRStatus(t *testing.T) {
 		ret    error
 	}{
 		{"Revoke NEW Status CSR", csrmodel.RevokedStatus, id, csr, ErrInvalidRevokeOp},
-		{"Approbe NEW Status CSR ID does not exist", csrmodel.ApprobedStatus, id + 1000, csr, ErrInvalidID},
-		{"Approbe NEW Status CSR ID exists", csrmodel.ApprobedStatus, id, csr, nil},
-		{"Deny APPROBED Status CSR", csrmodel.DeniedStatus, id, csr, ErrInvalidDenyOp},
-		{"Revoke APPROBED Status CSR", csrmodel.RevokedStatus, id, csr, nil},
+		{"Approbe NEW Status CSR ID does not exist", csrmodel.ApprovedStatus, id + 1000, csr, ErrInvalidID},
+		{"Approbe NEW Status CSR ID exists", csrmodel.ApprovedStatus, id, csr, nil},
+		{"Deny APPROVED Status CSR", csrmodel.DeniedStatus, id, csr, ErrInvalidDenyOp},
+		{"Revoke APPROVED Status CSR", csrmodel.RevokedStatus, id, csr, nil},
 	}
 	for _, tc := range testCases {
 		t.Run(fmt.Sprintf("Testing %s", tc.name), func(t *testing.T) {
@@ -407,7 +407,7 @@ func TestDelete(t *testing.T) {
 		t.Fatal("Could not insert CSR in DB")
 	}
 
-	csr.Status = csrmodel.ApprobedStatus
+	csr.Status = csrmodel.ApprovedStatus
 	_, err = stu.csrdb.UpdateByID(approbeID, csr)
 	if err != nil {
 		t.Fatal("Could not update CSR status in DB")
