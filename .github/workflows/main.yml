@@ -33,7 +33,3 @@ jobs:
         with:
           push: true
           tags: lamassuiot/lamassu-dms-enroller:${{ steps.tag_version.outputs.new_tag }}
-
-
-
-    
