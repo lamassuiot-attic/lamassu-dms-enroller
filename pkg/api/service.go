@@ -236,12 +236,18 @@ func (s *enrollerService) UpdateDMSStatus(ctx context.Context, d dms.DMS, id int
 	switch status := d.Status; status {
 	case dms.ApprovedStatus:
 		if prevDms.Status == dms.PendingStatus {
-			b, _ := pem.Decode([]byte(prevDms.CsrBase64))
-			csr, err := x509.ParseCertificateRequest(b.Bytes)
+			b, err := utils.DecodeB64(prevDms.CsrBase64)
+			if err != nil {
+				return dms.DMS{}, err
+			}
+			csr, err := x509.ParseCertificateRequest([]byte(b))
 			if err != nil {
 				return dms.DMS{}, err
 			}
 			crt, err := s.ApprobeCSR(ctx, id, csr)
+			if err != nil {
+				return dms.DMS{}, err
+			}
 			d, err = s.dmsDBStore.UpdateByID(ctx, id, dms.ApprovedStatus, InsertNth(ToHexInt(crt.SerialNumber), 2), "")
 			if err != nil {
 				return dms.DMS{}, ErrUpdateCSR
