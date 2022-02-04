@@ -1,11 +1,11 @@
 FROM golang:1.16
 WORKDIR /app
 COPY . .
-WORKDIR /app/cmd/enroller
-RUN go mod tidy
 WORKDIR /app
-RUN CGO_ENABLED=0 go build -o enroller ./cmd/enroller/main.go
+ENV GOSUMDB=off
+RUN go mod tidy
+RUN CGO_ENABLED=0 go build -o enroller cmd/main.go
 
-FROM scratch
+FROM alpine:3.14
 COPY --from=0 /app/enroller /
 CMD ["/enroller"]
