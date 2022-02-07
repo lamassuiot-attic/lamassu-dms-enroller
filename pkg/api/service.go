@@ -240,7 +240,8 @@ func (s *enrollerService) UpdateDMSStatus(ctx context.Context, d dms.DMS, id int
 			if err != nil {
 				return dms.DMS{}, err
 			}
-			csr, err := x509.ParseCertificateRequest([]byte(b))
+			csrBytes, _ := pem.Decode([]byte(b))
+			csr, err := x509.ParseCertificateRequest(csrBytes.Bytes)
 			if err != nil {
 				return dms.DMS{}, err
 			}
