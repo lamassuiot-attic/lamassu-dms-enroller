@@ -18,6 +18,7 @@ import (
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/lamassuiot/dms-enroller/pkg/api"
 	"github.com/lamassuiot/dms-enroller/pkg/utils"
+	"github.com/opentracing/opentracing-go"
 
 	"github.com/lamassuiot/dms-enroller/pkg/config"
 	dmsdb "github.com/lamassuiot/dms-enroller/pkg/models/dms/store/db"
@@ -27,6 +28,7 @@ import (
 	stdprometheus "github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	jaegercfg "github.com/uber/jaeger-client-go/config"
+	jaegerlog "github.com/uber/jaeger-client-go/log"
 	"gopkg.in/yaml.v2"
 )
 
@@ -62,7 +64,10 @@ func main() {
 		os.Exit(1)
 	}
 	level.Info(logger).Log("msg", "Jaeger configuration values loaded")
-	tracer, closer, err := jcfg.NewTracer()
+	tracer, closer, err := jcfg.NewTracer(
+		jaegercfg.Logger(jaegerlog.StdLogger),
+	)
+	opentracing.SetGlobalTracer(tracer)
 	if err != nil {
 		level.Error(logger).Log("err", err, "msg", "Could not start Jaeger tracer")
 		os.Exit(1)
@@ -125,7 +130,7 @@ func main() {
 
 	//estService := estserver.NewEstService(&lamassuCaClient, logger)
 
-	//mux.Handle("/", lamassuest.MakeHTTPHandler(estService, log.With(logger, "component", "HTTPS"), tracer))
+	//mux.Handle("/.well-known/", estserver.MakeHTTPHandler(estService, log.With(logger, "component", "HTTPS"), tracer))
 	http.Handle("/", accessControl(mux))
 	mux.Handle("/", http.FileServer(http.Dir("./docs")))
 	mux.Handle("/v1/", api.MakeHTTPHandler(s, log.With(logger, "component", "HTTPS"), tracer))
