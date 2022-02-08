@@ -128,9 +128,6 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	//estService := estserver.NewEstService(&lamassuCaClient, logger)
-
-	//mux.Handle("/.well-known/", estserver.MakeHTTPHandler(estService, log.With(logger, "component", "HTTPS"), tracer))
 	http.Handle("/", accessControl(mux))
 	mux.Handle("/", http.FileServer(http.Dir("./docs")))
 	mux.Handle("/v1/", api.MakeHTTPHandler(s, log.With(logger, "component", "HTTPS"), tracer))
