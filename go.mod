@@ -14,7 +14,7 @@ require (
 	github.com/go-openapi/runtime v0.21.0
 	github.com/gorilla/mux v1.8.0
 	github.com/kelseyhightower/envconfig v1.4.0
-	github.com/lamassuiot/lamassu-ca v1.0.4
+	github.com/lamassuiot/lamassu-ca v1.0.10
 	github.com/lib/pq v1.8.0
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/prometheus/client_golang v1.11.0

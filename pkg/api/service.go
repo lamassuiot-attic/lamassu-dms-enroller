@@ -297,7 +297,7 @@ func (s *enrollerService) RevokeCert(ctx context.Context, serialToRevoke string)
 
 func (s *enrollerService) ApprobeCSR(ctx context.Context, id int, csr *x509.CertificateRequest) (*x509.Certificate, error) {
 
-	crt, err := s.lamassuCaClient.SignCertificateRequest(ctx, "Lamassu-DMS-Enroller", csr, "dmsenroller")
+	crt, err := s.lamassuCaClient.SignCertificateRequest(ctx, "Lamassu-DMS-Enroller", csr, "dmsenroller", true)
 	if err != nil {
 		return &x509.Certificate{}, ErrSignCSR
 	}
