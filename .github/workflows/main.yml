@@ -33,3 +33,10 @@ jobs:
         with:
           push: true
           tags: lamassuiot/lamassu-dms-enroller:${{ steps.tag_version.outputs.new_tag }}
+
+        
+      - name: Tag Docker image as latest
+        uses: docker/build-push-action@v2
+        with:
+          push: true
+          tags: lamassuiot/lamassu-dms-enroller:latest

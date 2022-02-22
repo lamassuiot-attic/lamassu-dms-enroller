@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"path"
 	"strings"
 	"syscall"
 	"time"
@@ -16,20 +15,20 @@ import (
 	"github.com/go-kit/kit/log/level"
 	kitprometheus "github.com/go-kit/kit/metrics/prometheus"
 	"github.com/go-openapi/runtime/middleware"
-	"github.com/lamassuiot/dms-enroller/pkg/api"
-	"github.com/lamassuiot/dms-enroller/pkg/utils"
+	"github.com/lamassuiot/dms-enroller/pkg/server/api/service"
+	"github.com/lamassuiot/dms-enroller/pkg/server/api/transport"
+	"github.com/lamassuiot/dms-enroller/pkg/server/utils"
 	"github.com/opentracing/opentracing-go"
 
-	"github.com/lamassuiot/dms-enroller/pkg/config"
-	dmsdb "github.com/lamassuiot/dms-enroller/pkg/models/dms/store/db"
-	lamassucaclient "github.com/lamassuiot/lamassu-ca/client"
+	"github.com/lamassuiot/dms-enroller/pkg/server/config"
+	dmsdb "github.com/lamassuiot/dms-enroller/pkg/server/models/dms/store/db"
+	lamassucaclient "github.com/lamassuiot/lamassu-ca/pkg/client"
 
-	"github.com/lamassuiot/dms-enroller/pkg/docs"
+	"github.com/lamassuiot/dms-enroller/pkg/server/docs"
 	stdprometheus "github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	jaegercfg "github.com/uber/jaeger-client-go/config"
 	jaegerlog "github.com/uber/jaeger-client-go/log"
-	"gopkg.in/yaml.v2"
 )
 
 func main() {
@@ -84,11 +83,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	var s api.Service
+	var s service.Service
 	{
-		s = api.NewEnrollerService(dmsDb, &lamassuCaClient, logger)
-		s = api.LoggingMiddleware(logger)(s)
-		s = api.NewInstrumentingMiddleware(
+		s = service.NewEnrollerService(dmsDb, &lamassuCaClient, logger)
+		s = service.LoggingMiddleware(logger)(s)
+		s = service.NewInstrumentingMiddleware(
 			kitprometheus.NewCounterFrom(stdprometheus.CounterOpts{
 				Namespace: "enroller",
 				Subsystem: "enroller_service",
@@ -104,39 +103,27 @@ func main() {
 		)(s)
 	}
 	openapiSpec := docs.NewOpenAPI3(cfg)
-
-	openapiSpecJsonData, _ := json.Marshal(&openapiSpec)
-	openapiSpecYamlData, _ := yaml.Marshal(&openapiSpec)
-
-	err = os.MkdirAll("docs", 0744)
-	if err != nil {
-		level.Error(logger).Log("err", err, "msg", "Could not create openapiv3 docs dir")
-		os.Exit(1)
-	}
-
-	err = os.WriteFile(path.Join("docs", "openapiv3.json"), openapiSpecJsonData, 0644)
-	if err != nil {
-		level.Error(logger).Log("err", err, "msg", "Could not create openapiv3 JSON spec file")
-		os.Exit(1)
-	}
-
-	err = os.WriteFile(path.Join("docs", "openapiv3.yaml"), openapiSpecYamlData, 0644)
-	if err != nil {
-		level.Error(logger).Log("err", err, "msg", "Could not create openapiv3 YAML spec file")
-		os.Exit(1)
+	specHandler := func(prefix string) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			url := r.URL.Path
+			if originalPrefix, ok := r.Header["X-Envoy-Original-Path"]; ok {
+				url = originalPrefix[0]
+			}
+			url = strings.Split(url, prefix)[0]
+			openapiSpec.Servers[0].URL = url
+			openapiSpecJsonData, _ := json.Marshal(&openapiSpec)
+			w.Write(openapiSpecJsonData)
+		}
 	}
 
 	mux := http.NewServeMux()
 
-	http.Handle("/", accessControl(mux))
-	mux.Handle("/", http.FileServer(http.Dir("./docs")))
-	mux.Handle("/v1/", api.MakeHTTPHandler(s, log.With(logger, "component", "HTTPS"), tracer))
-	mux.Handle("/v1/docs", middleware.SwaggerUI(middleware.SwaggerUIOpts{
-		BasePath: "/v1",
-		SpecURL:  path.Join("/openapiv3.json"),
-		Path:     "docs",
-	}, mux))
-
+	http.Handle("/v1/", accessControl(transport.MakeHTTPHandler(s, log.With(logger, "component", "HTTPS"), tracer)))
+	http.Handle("/v1/docs/", http.StripPrefix("/v1/docs", middleware.SwaggerUI(middleware.SwaggerUIOpts{
+		Path:    "/",
+		SpecURL: "spec.json",
+	}, mux)))
+	http.HandleFunc("/v1/docs/spec.json", specHandler("/v1/docs/"))
 	http.Handle("/metrics", promhttp.Handler())
 
 	errs := make(chan error)
