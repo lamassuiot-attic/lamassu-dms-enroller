@@ -8,6 +8,7 @@ type DMS struct {
 	Status           string             `json:"status"`
 	CsrBase64        string             `json:"csr,omitempty"`
 	CerificateBase64 string             `json:"crt"`
+	Subject 		 Subject            `json:"subject"`
 }
 type PrivateKeyMetadata struct {
 	KeyType string `json:"type"`
