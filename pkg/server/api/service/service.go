@@ -291,7 +291,7 @@ func (s *enrollerService) GetDMSs(ctx context.Context) ([]dms.DMS, error) {
 	if err != nil {
 		return []dms.DMS{}, err
 	}
-	var dmsList []dms.DMS
+	var dmsList []dms.DMS = make([]dms.DMS, 0)
 	for _, item := range d {
 		lamassuCert, _ := s.lamassuCaClient.GetCert(ctx, "Lamassu-DMS-Enroller", item.SerialNumber, "dmsenroller")
 		item.Subject = dms.Subject{
