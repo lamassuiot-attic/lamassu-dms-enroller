@@ -14,6 +14,7 @@ jobs:
         uses: actions/checkout@v2
         with:
           fetch-depth: 0
+          persist-credentials: false # otherwise, the token used is the GITHUB_TOKEN, instead of your personal access token.
       
       - name: Setup go
         uses: actions/setup-go@v2
@@ -36,6 +37,7 @@ jobs:
         with:
           files: README.md
 
+      #If README file is modified by tj-actions/coverage-badge-go, push README changes
       - name: Push changes
         if: steps.verify-changed-files.outputs.files_changed == 'true'
         uses: ad-m/github-push-action@master
