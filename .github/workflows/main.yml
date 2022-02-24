@@ -30,6 +30,19 @@ jobs:
         with:
           filename: coverage.out
 
+      - name: Verify Changed files
+        uses: tj-actions/verify-changed-files@v8.1
+        id: verify-changed-files
+        with:
+          files: README.md
+
+      - name: Push changes
+        if: steps.verify-changed-files.outputs.files_changed == 'true'
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ github.token }}
+          branch: ${{ github.head_ref }}
+
       - name: Automatic Tag (Bump version and push tag)
         id: tag_version
         uses: mathieudutour/github-tag-action@v6.0
