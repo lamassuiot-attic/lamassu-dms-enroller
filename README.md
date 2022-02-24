@@ -10,4 +10,4 @@ Lamassu
 
 ## Lamassu DMS Enroller
 
-![Coverage](https://img.shields.io/badge/Coverage-0.0%25-brightgreen) 
+![Coverage](https://img.shields.io/badge/Coverage-10.0%25-brightgreen) 
