@@ -291,21 +291,21 @@ func (s *enrollerService) GetDMSs(ctx context.Context) ([]dms.DMS, error) {
 	if err != nil {
 		return []dms.DMS{}, err
 	}
-	var dms []dms.DMS
+	var dmsList []dms.DMS
 	for _, item := range d {
 		lamassuCert, _ := s.lamassuCaClient.GetCert(ctx, "Lamassu-DMS-Enroller", item.SerialNumber, "dmsenroller")
-		item.Subject = &dms.Subject{
-			C: lamassuCert.Subject.C,
+		item.Subject = dms.Subject{
+			C:  lamassuCert.Subject.C,
 			ST: lamassuCert.Subject.ST,
-			L: lamassuCert.Subject.L,
-			O: lamassuCert.Subject.O,
+			L:  lamassuCert.Subject.L,
+			O:  lamassuCert.Subject.O,
 			OU: lamassuCert.Subject.OU,
 			CN: lamassuCert.Subject.CN,
 		}
 		item.CerificateBase64 = lamassuCert.CertContent.CerificateBase64
-		dms = append(dms, item)
+		dmsList = append(dmsList, item)
 	}
-	return dms, nil
+	return dmsList, nil
 }
 
 func (s *enrollerService) GetDMSCertificate(ctx context.Context, id int) (*x509.Certificate, error) {
