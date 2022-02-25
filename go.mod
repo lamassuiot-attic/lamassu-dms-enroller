@@ -15,8 +15,7 @@ require (
 	github.com/go-playground/validator/v10 v10.10.0
 	github.com/gorilla/mux v1.8.0
 	github.com/kelseyhightower/envconfig v1.4.0
-	github.com/lamassuiot/lamassu-ca v1.0.13
-	github.com/lamassuiot/lamassu-est v0.2.4 // indirect
+	github.com/lamassuiot/lamassu-ca v1.0.15
 	github.com/lib/pq v1.8.0
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/prometheus/client_golang v1.11.0

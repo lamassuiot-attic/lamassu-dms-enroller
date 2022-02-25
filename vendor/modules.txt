@@ -93,12 +93,10 @@ github.com/josharian/intern
 # github.com/kelseyhightower/envconfig v1.4.0
 ## explicit
 github.com/kelseyhightower/envconfig
-# github.com/lamassuiot/lamassu-ca v1.0.13
+# github.com/lamassuiot/lamassu-ca v1.0.15
 ## explicit
 github.com/lamassuiot/lamassu-ca/pkg/client
 github.com/lamassuiot/lamassu-ca/pkg/server/utils
-# github.com/lamassuiot/lamassu-est v0.2.4
-## explicit
 # github.com/leodido/go-urn v1.2.1
 github.com/leodido/go-urn
 # github.com/lib/pq v1.8.0
