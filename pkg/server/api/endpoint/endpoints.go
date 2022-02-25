@@ -192,7 +192,7 @@ type PostDmsCreationFormRequest struct {
 		L  string `json:"locality"`
 	} `json:"subject"`
 	KeyMetadata struct {
-		KeyType string `json:"type" validate:"oneof='rsa' 'ecdsa'"`
+		KeyType string `json:"type" validate:"oneof='rsa' 'ec'"`
 		KeyBits int    `json:"bits" validate:"required"`
 	} `json:"key_metadata" validate:"required"`
 	Url string `json:"url" validate:"required"`
@@ -203,11 +203,11 @@ func ValidatePostDmsCreationFormRequest(request PostDmsCreationFormRequest) erro
 		req := sl.Current().Interface().(PostDmsCreationFormRequest)
 		switch req.KeyMetadata.KeyType {
 		case "rsa":
-			if math.Mod(float64(req.KeyMetadata.KeyBits), 1024) != 0 && req.KeyMetadata.KeyBits < 2048 {
+			if math.Mod(float64(req.KeyMetadata.KeyBits), 1024) != 0 || req.KeyMetadata.KeyBits < 2048 {
 				sl.ReportError(req.KeyMetadata.KeyBits, "bits", "Bits", "bits1024multipleAndGt2048", "")
 			}
-		case "ecdsa":
-			if req.KeyMetadata.KeyBits < 160 || req.KeyMetadata.KeyBits > 512 {
+		case "ec":
+			if req.KeyMetadata.KeyBits != 224 || req.KeyMetadata.KeyBits != 256 || req.KeyMetadata.KeyBits != 384 {
 				sl.ReportError(req.KeyMetadata.KeyBits, "bits", "Bits", "bitsEcdsaMultiple", "")
 			}
 		}
