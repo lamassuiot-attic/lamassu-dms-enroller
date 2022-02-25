@@ -207,7 +207,11 @@ func ValidatePostDmsCreationFormRequest(request PostDmsCreationFormRequest) erro
 				sl.ReportError(req.KeyMetadata.KeyBits, "bits", "Bits", "bits1024multipleAndGt2048", "")
 			}
 		case "ec":
-			if req.KeyMetadata.KeyBits != 224 || req.KeyMetadata.KeyBits != 256 || req.KeyMetadata.KeyBits != 384 {
+			if req.KeyMetadata.KeyBits != 224 {
+				sl.ReportError(req.KeyMetadata.KeyBits, "bits", "Bits", "bitsEcdsaMultiple", "")
+			} else if req.KeyMetadata.KeyBits != 256 {
+				sl.ReportError(req.KeyMetadata.KeyBits, "bits", "Bits", "bitsEcdsaMultiple", "")
+			} else if req.KeyMetadata.KeyBits != 384 {
 				sl.ReportError(req.KeyMetadata.KeyBits, "bits", "Bits", "bitsEcdsaMultiple", "")
 			}
 		}
