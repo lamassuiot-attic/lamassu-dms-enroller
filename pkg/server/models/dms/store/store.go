@@ -3,7 +3,7 @@ package store
 import (
 	"context"
 
-	"github.com/lamassuiot/dms-enroller/pkg/server/models/dms"
+	"github.com/lamassuiot/lamassu-dms-enroller/pkg/server/models/dms"
 )
 
 type DB interface {

@@ -9,9 +9,9 @@ import (
 	"testing"
 
 	"github.com/go-kit/log"
-	"github.com/lamassuiot/dms-enroller/pkg/server/mocks"
-	"github.com/lamassuiot/dms-enroller/pkg/server/models/dms"
 	"github.com/lamassuiot/lamassu-ca/pkg/server/utils"
+	"github.com/lamassuiot/lamassu-dms-enroller/pkg/server/mocks"
+	"github.com/lamassuiot/lamassu-dms-enroller/pkg/server/models/dms"
 )
 
 func TestUpdateDMSStatus(t *testing.T) {

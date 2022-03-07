@@ -9,7 +9,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/lamassuiot/dms-enroller/pkg/server/models/dms"
+	"github.com/lamassuiot/lamassu-dms-enroller/pkg/server/models/dms"
 )
 
 type MockDB struct {

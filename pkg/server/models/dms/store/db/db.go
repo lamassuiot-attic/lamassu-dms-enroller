@@ -7,10 +7,10 @@ import (
 	"strconv"
 	"time"
 
-	dmserrors "github.com/lamassuiot/dms-enroller/pkg/server/api/errors"
-	"github.com/lamassuiot/dms-enroller/pkg/server/models/dms"
-	"github.com/lamassuiot/dms-enroller/pkg/server/models/dms/store"
-	"github.com/lamassuiot/dms-enroller/pkg/server/utils"
+	dmserrors "github.com/lamassuiot/lamassu-dms-enroller/pkg/server/api/errors"
+	"github.com/lamassuiot/lamassu-dms-enroller/pkg/server/models/dms"
+	"github.com/lamassuiot/lamassu-dms-enroller/pkg/server/models/dms/store"
+	"github.com/lamassuiot/lamassu-dms-enroller/pkg/server/utils"
 	"github.com/opentracing/opentracing-go"
 
 	"github.com/go-kit/kit/log"
@@ -128,6 +128,28 @@ func (db *DB) SelectByID(ctx context.Context, id int) (dms.DMS, error) {
 	}
 	level.Info(db.logger).Log("msg", "DMS with ID "+strconv.Itoa(id)+" obtained from database")
 	return d, nil
+}
+func (db *DB) SelectBySerialNumber(ctx context.Context, SerialNumber string) (int, error) {
+	parentSpan := opentracing.SpanFromContext(ctx)
+	sqlStatement := `
+	SELECT *
+	FROM dms_store
+	WHERE serialNumber = $1;
+	`
+	span := opentracing.StartSpan("lamassu-dms-enroller: obtain DMS with SerialNumber "+SerialNumber+" from database", opentracing.ChildOf(parentSpan.Context()))
+	row := db.QueryRow(sqlStatement, SerialNumber)
+	span.Finish()
+	var d dms.DMS
+	err := row.Scan(&d.Id, &d.Name, &d.SerialNumber, &d.KeyMetadata.KeyType, &d.KeyMetadata.KeyBits, &d.CsrBase64, &d.Status)
+	if err != nil {
+		level.Error(db.logger).Log("err", err, "msg", "Could not obtain DMS with SerialNumber "+SerialNumber+" from database")
+		notFoundErr := &dmserrors.ResourceNotFoundError{
+			ResourceType: "DMS",
+			ResourceId:   SerialNumber,
+		}
+		return int(0), notFoundErr
+	}
+	return d.Id, nil
 }
 
 func (db *DB) UpdateByID(ctx context.Context, id int, status string, serialNumber string, encodedCsr string) (dms.DMS, error) {

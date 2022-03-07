@@ -1,4 +1,4 @@
-module github.com/lamassuiot/dms-enroller
+module github.com/lamassuiot/lamassu-dms-enroller
 
 go 1.16
 

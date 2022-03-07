@@ -9,10 +9,10 @@ import (
 	"strconv"
 
 	"github.com/gorilla/mux"
-	"github.com/lamassuiot/dms-enroller/pkg/server/api/endpoint"
-	dmsErrors "github.com/lamassuiot/dms-enroller/pkg/server/api/errors"
-	"github.com/lamassuiot/dms-enroller/pkg/server/api/service"
-	"github.com/lamassuiot/dms-enroller/pkg/server/utils"
+	"github.com/lamassuiot/lamassu-dms-enroller/pkg/server/api/endpoint"
+	dmsErrors "github.com/lamassuiot/lamassu-dms-enroller/pkg/server/api/errors"
+	"github.com/lamassuiot/lamassu-dms-enroller/pkg/server/api/service"
+	"github.com/lamassuiot/lamassu-dms-enroller/pkg/server/utils"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/tracing/opentracing"

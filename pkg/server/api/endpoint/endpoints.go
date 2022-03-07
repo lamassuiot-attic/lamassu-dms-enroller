@@ -8,9 +8,9 @@ import (
 	"github.com/go-kit/kit/endpoint"
 	"github.com/go-kit/kit/tracing/opentracing"
 	"github.com/go-playground/validator/v10"
-	dmsenrrors "github.com/lamassuiot/dms-enroller/pkg/server/api/errors"
-	"github.com/lamassuiot/dms-enroller/pkg/server/api/service"
-	"github.com/lamassuiot/dms-enroller/pkg/server/models/dms"
+	dmsenrrors "github.com/lamassuiot/lamassu-dms-enroller/pkg/server/api/errors"
+	"github.com/lamassuiot/lamassu-dms-enroller/pkg/server/api/service"
+	"github.com/lamassuiot/lamassu-dms-enroller/pkg/server/models/dms"
 	stdopentracing "github.com/opentracing/opentracing-go"
 )
 

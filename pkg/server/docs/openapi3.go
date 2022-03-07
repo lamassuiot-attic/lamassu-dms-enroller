@@ -2,7 +2,7 @@ package docs
 
 import (
 	"github.com/getkin/kin-openapi/openapi3"
-	"github.com/lamassuiot/dms-enroller/pkg/server/config"
+	"github.com/lamassuiot/lamassu-dms-enroller/pkg/server/config"
 )
 
 func NewOpenAPI3(config config.Config) openapi3.T {

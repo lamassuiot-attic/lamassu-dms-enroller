@@ -5,7 +5,7 @@ import (
 	"crypto/x509"
 	"time"
 
-	"github.com/lamassuiot/dms-enroller/pkg/server/models/dms"
+	"github.com/lamassuiot/lamassu-dms-enroller/pkg/server/models/dms"
 	"github.com/opentracing/opentracing-go"
 
 	"github.com/go-kit/kit/log"

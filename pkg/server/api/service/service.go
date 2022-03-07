@@ -20,9 +20,9 @@ import (
 	"github.com/go-kit/kit/log"
 	lamassucaclient "github.com/lamassuiot/lamassu-ca/pkg/client"
 
-	"github.com/lamassuiot/dms-enroller/pkg/server/models/dms"
-	dmsstore "github.com/lamassuiot/dms-enroller/pkg/server/models/dms/store"
-	"github.com/lamassuiot/dms-enroller/pkg/server/utils"
+	"github.com/lamassuiot/lamassu-dms-enroller/pkg/server/models/dms"
+	dmsstore "github.com/lamassuiot/lamassu-dms-enroller/pkg/server/models/dms/store"
+	"github.com/lamassuiot/lamassu-dms-enroller/pkg/server/utils"
 )
 
 type Service interface {
