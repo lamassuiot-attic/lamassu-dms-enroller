@@ -209,7 +209,7 @@ type PostDmsCreationFormRequest struct {
 		L  string `json:"locality"`
 	} `json:"subject"`
 	KeyMetadata struct {
-		KeyType     string `json:"type" validate:"oneof='rsa' 'ec'"`
+		KeyType     string `json:"type" validate:"oneof='RSA' 'EC'"`
 		KeyBits     int    `json:"bits" validate:"required"`
 		KeyStrength string `json:"strength,omitempty"`
 	} `json:"key_metadata" validate:"required"`
