@@ -47,27 +47,27 @@ func (mw *instrumentingMiddleware) CreateDMS(ctx context.Context, csrBase64Encod
 	return mw.next.CreateDMS(ctx, csrBase64Encoded, dmsName)
 }
 
-func (mw *instrumentingMiddleware) CreateDMSForm(ctx context.Context, subject dms.Subject, PrivateKeyMetadata dms.PrivateKeyMetadata, url string, dmsName string) (_ string, d dms.DMS, err error) {
+func (mw *instrumentingMiddleware) CreateDMSForm(ctx context.Context, subject dms.Subject, PrivateKeyMetadata dms.PrivateKeyMetadata, dmsName string) (_ string, d dms.DMS, err error) {
 	defer func(begin time.Time) {
 		lvs := []string{"method", "CreateDMSForm", "error", fmt.Sprint(err != nil)}
 		mw.requestCount.With(lvs...).Add(1)
 		mw.requestLatency.With(lvs...).Observe(time.Since(begin).Seconds())
 	}(time.Now())
 
-	return mw.next.CreateDMSForm(ctx, subject, PrivateKeyMetadata, url, dmsName)
+	return mw.next.CreateDMSForm(ctx, subject, PrivateKeyMetadata, dmsName)
 }
 
-func (mw *instrumentingMiddleware) UpdateDMSStatus(ctx context.Context, status string, id int) (dOut dms.DMS, err error) {
+func (mw *instrumentingMiddleware) UpdateDMSStatus(ctx context.Context, status string, id string, CAList []string) (dOut dms.DMS, err error) {
 	defer func(begin time.Time) {
 		lvs := []string{"method", "UpdateDMSStatus", "error", "false"}
 		mw.requestCount.With(lvs...).Add(1)
 		mw.requestLatency.With(lvs...).Observe(time.Since(begin).Seconds())
 	}(time.Now())
 
-	return mw.next.UpdateDMSStatus(ctx, status, id)
+	return mw.next.UpdateDMSStatus(ctx, status, id, CAList)
 }
 
-func (mw *instrumentingMiddleware) DeleteDMS(ctx context.Context, id int) (err error) {
+func (mw *instrumentingMiddleware) DeleteDMS(ctx context.Context, id string) (err error) {
 	defer func(begin time.Time) {
 		lvs := []string{"method", "DeleteDMS", "error", fmt.Sprint(err != nil)}
 		mw.requestCount.With(lvs...).Add(1)
@@ -77,7 +77,7 @@ func (mw *instrumentingMiddleware) DeleteDMS(ctx context.Context, id int) (err e
 	return mw.next.DeleteDMS(ctx, id)
 }
 
-func (mw *instrumentingMiddleware) GetDMSCertificate(ctx context.Context, id int) (crt *x509.Certificate, err error) {
+func (mw *instrumentingMiddleware) GetDMSCertificate(ctx context.Context, id string) (crt *x509.Certificate, err error) {
 	defer func(begin time.Time) {
 		lvs := []string{"method", "GetDMSCertificate", "error", fmt.Sprint(err != nil)}
 		mw.requestCount.With(lvs...).Add(1)
@@ -94,4 +94,13 @@ func (mw *instrumentingMiddleware) GetDMSs(ctx context.Context) (d []dms.DMS, er
 	}(time.Now())
 
 	return mw.next.GetDMSs(ctx)
+}
+func (mw *instrumentingMiddleware) GetDMSbyID(ctx context.Context, id string) (d dms.DMS, err error) {
+	defer func(begin time.Time) {
+		lvs := []string{"method", "GetDMSbyID", "error", fmt.Sprint(err != nil)}
+		mw.requestCount.With(lvs...).Add(1)
+		mw.requestLatency.With(lvs...).Observe(time.Since(begin).Seconds())
+	}(time.Now())
+
+	return mw.next.GetDMSbyID(ctx, id)
 }

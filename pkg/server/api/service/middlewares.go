@@ -43,9 +43,8 @@ func (mw loggingMiddleware) CreateDMS(ctx context.Context, csrBase64Encoded stri
 	defer func(begin time.Time) {
 		mw.logger.Log(
 			"method", "CreateDMS",
-			"csrBase64Encoded", csrBase64Encoded,
 			"dmsName", dmsName,
-			"dms", dms,
+			"dmsID", dms.Id,
 			"took", time.Since(begin),
 			"trace_id", opentracing.SpanFromContext(ctx),
 			"err", err,
@@ -54,23 +53,23 @@ func (mw loggingMiddleware) CreateDMS(ctx context.Context, csrBase64Encoded stri
 	return mw.next.CreateDMS(ctx, csrBase64Encoded, dmsName)
 }
 
-func (mw loggingMiddleware) CreateDMSForm(ctx context.Context, subject dms.Subject, PrivateKeyMetadata dms.PrivateKeyMetadata, url string, dmsName string) (_ string, d dms.DMS, err error) {
+func (mw loggingMiddleware) CreateDMSForm(ctx context.Context, subject dms.Subject, PrivateKeyMetadata dms.PrivateKeyMetadata, dmsName string) (_ string, d dms.DMS, err error) {
 	defer func(begin time.Time) {
 		mw.logger.Log(
 			"method", "CreateDMSForm",
 			"dmsName", dmsName,
 			"subject", subject,
 			"KeyMetadata", PrivateKeyMetadata,
-			"dms", d,
+			"dmsID", d.Id,
 			"took", time.Since(begin),
 			"trace_id", opentracing.SpanFromContext(ctx),
 			"err", err,
 		)
 	}(time.Now())
-	return mw.next.CreateDMSForm(ctx, subject, PrivateKeyMetadata, url, dmsName)
+	return mw.next.CreateDMSForm(ctx, subject, PrivateKeyMetadata, dmsName)
 }
 
-func (mw loggingMiddleware) UpdateDMSStatus(ctx context.Context, status string, id int) (dOut dms.DMS, err error) {
+func (mw loggingMiddleware) UpdateDMSStatus(ctx context.Context, status string, id string, CAList []string) (dOut dms.DMS, err error) {
 	defer func(begin time.Time) {
 		mw.logger.Log(
 			"method", "UpdateDMSStatus",
@@ -81,10 +80,10 @@ func (mw loggingMiddleware) UpdateDMSStatus(ctx context.Context, status string, 
 			"trace_id", opentracing.SpanFromContext(ctx),
 		)
 	}(time.Now())
-	return mw.next.UpdateDMSStatus(ctx, status, id)
+	return mw.next.UpdateDMSStatus(ctx, status, id, CAList)
 }
 
-func (mw loggingMiddleware) DeleteDMS(ctx context.Context, id int) (err error) {
+func (mw loggingMiddleware) DeleteDMS(ctx context.Context, id string) (err error) {
 	defer func(begin time.Time) {
 		mw.logger.Log(
 			"method", "DeleteDMS",
@@ -97,12 +96,13 @@ func (mw loggingMiddleware) DeleteDMS(ctx context.Context, id int) (err error) {
 	return mw.next.DeleteDMS(ctx, id)
 }
 
-func (mw loggingMiddleware) GetDMSCertificate(ctx context.Context, id int) (crt *x509.Certificate, err error) {
+func (mw loggingMiddleware) GetDMSCertificate(ctx context.Context, id string) (crt *x509.Certificate, err error) {
 	defer func(begin time.Time) {
 		mw.logger.Log(
 			"method", "GetDMSCertificate",
 			"id", id,
 			"crt_serialnumber", crt.SerialNumber.String(),
+			"crt_commonName", crt.Subject.CommonName,
 			"took", time.Since(begin),
 			"trace_id", opentracing.SpanFromContext(ctx),
 			"err", err,
@@ -115,11 +115,27 @@ func (mw loggingMiddleware) GetDMSs(ctx context.Context) (d []dms.DMS, err error
 	defer func(begin time.Time) {
 		mw.logger.Log(
 			"method", "GetDMSs",
-			"dmss", d,
+			"dmss", len(d),
 			"took", time.Since(begin),
 			"trace_id", opentracing.SpanFromContext(ctx),
 			"err", err,
 		)
 	}(time.Now())
 	return mw.next.GetDMSs(ctx)
+}
+func (mw loggingMiddleware) GetDMSbyID(ctx context.Context, id string) (d dms.DMS, err error) {
+	defer func(begin time.Time) {
+		mw.logger.Log(
+			"method", "GetDMSbyID",
+			"dms_name", d.Name,
+			"dms_id", d.Id,
+			"dms_cert_SerialNumber", d.SerialNumber,
+			"dms_Authorized_CAs", d.AuthorizedCAs,
+			"dms_status", d.Status,
+			"took", time.Since(begin),
+			"trace_id", opentracing.SpanFromContext(ctx),
+			"err", err,
+		)
+	}(time.Now())
+	return mw.next.GetDMSbyID(ctx, id)
 }

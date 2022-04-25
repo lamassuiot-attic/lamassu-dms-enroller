@@ -43,9 +43,9 @@ func checkDBAlive(db *MockDB) error {
 	return err
 }
 
-func (db *MockDB) Insert(ctx context.Context, d dms.DMS) (int, error) {
+func (db *MockDB) Insert(ctx context.Context, d dms.DMS) (string, error) {
 
-	id := 0
+	id := "0"
 	if ctx.Value("DBInsert") != nil {
 		failDBLog := ctx.Value("DBInsert").(bool)
 
@@ -57,7 +57,13 @@ func (db *MockDB) Insert(ctx context.Context, d dms.DMS) (int, error) {
 	}
 	return id, nil
 }
+func (db *MockDB) SelectAllAuthorizedCAs(ctx context.Context) ([]dms.AuthorizedCAs, error) {
+	return nil, nil
+}
 
+func (db *MockDB) SelectBySerialNumber(ctx context.Context, SerialNumber string) (string, error) {
+	return "", nil
+}
 func (db *MockDB) SelectAll(ctx context.Context) ([]dms.DMS, error) {
 	dmsArray := []dms.DMS{}
 	dmsArray = append(dmsArray, testDMS(dms.ApprovedStatus))
@@ -73,16 +79,16 @@ func (db *MockDB) SelectAll(ctx context.Context) ([]dms.DMS, error) {
 	return []dms.DMS{}, nil
 }
 
-func (db *MockDB) SelectByID(ctx context.Context, id int) (dms.DMS, error) {
+func (db *MockDB) SelectByID(ctx context.Context, id string) (dms.DMS, error) {
 	var d dms.DMS
 	switch id {
-	case 1:
+	case "1":
 		d = testDMS(dms.ApprovedStatus)
-	case 2:
+	case "2":
 		d = testDMS(dms.PendingStatus)
-	case 3:
+	case "3":
 		d = testDMS(dms.RevokedStatus)
-	case 4:
+	case "4":
 		d = testDMS(dms.DeniedStatus)
 	}
 
@@ -105,7 +111,7 @@ func (db *MockDB) SelectByID(ctx context.Context, id int) (dms.DMS, error) {
 	return dms.DMS{}, nil
 }
 
-func (db *MockDB) UpdateByID(ctx context.Context, id int, status string, serialNumber string, encodedCsr string) (dms.DMS, error) {
+func (db *MockDB) UpdateByID(ctx context.Context, id string, status string, serialNumber string, encodedCsr string) (dms.DMS, error) {
 
 	if ctx.Value("DBUpdateByID") != nil {
 		failDBLog := ctx.Value("DBUpdateByID").(bool)
@@ -120,7 +126,7 @@ func (db *MockDB) UpdateByID(ctx context.Context, id int, status string, serialN
 
 }
 
-func (db *MockDB) Delete(ctx context.Context, id int) error {
+func (db *MockDB) Delete(ctx context.Context, id string) error {
 	if ctx.Value("DBDelete") != nil {
 		failDBLog := ctx.Value("DBDelete").(bool)
 
@@ -133,14 +139,27 @@ func (db *MockDB) Delete(ctx context.Context, id int) error {
 	return nil
 }
 
+func (db *MockDB) InsertAuthorizedCAs(ctx context.Context, dmsid string, CAs []string) error {
+	return nil
+}
+
+func (db *MockDB) DeleteAuthorizedCAs(ctx context.Context, dmsid string) error {
+	return nil
+}
+
+func (db *MockDB) SelectByDMSIDAuthorizedCAs(ctx context.Context, dmsid string) ([]dms.AuthorizedCAs, error) {
+	return nil, nil
+}
+
 func testDMS(status string) dms.DMS {
 
 	key := dms.PrivateKeyMetadata{
-		KeyType: "rsa",
-		KeyBits: 3072,
+		KeyType:     "RSA",
+		KeyBits:     3072,
+		KeyStrength: "low",
 	}
 	device := dms.DMS{
-		Id:               1,
+		Id:               "1",
 		Name:             "test",
 		SerialNumber:     "23-33-5b-19-c8-ed-8b-2a-92-5c-7b-57-fc-47-45-e7-12-03-91-23",
 		KeyMetadata:      key,

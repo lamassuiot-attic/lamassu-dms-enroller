@@ -47,14 +47,22 @@ func NewOpenAPI3(config config.Config) openapi3.T {
 		"DMS": openapi3.NewSchemaRef("",
 			openapi3.NewObjectSchema().
 				WithProperty("id", openapi3.NewIntegerSchema()).
-				WithProperty("dms_name", openapi3.NewStringSchema()).
+				WithProperty("name", openapi3.NewStringSchema()).
 				WithProperty("serial_number", openapi3.NewStringSchema()).
+				WithPropertyRef("subject", &openapi3.SchemaRef{
+					Ref: "#/components/schemas/Subject",
+				}).
 				WithPropertyRef("key_metadata", &openapi3.SchemaRef{
 					Ref: "#/components/schemas/KeyMetadata",
 				}).
 				WithProperty("status", openapi3.NewStringSchema()).
+				WithPropertyRef("authorized_cas", arrayOf(&openapi3.SchemaRef{
+					Ref: "#/components/schemas/CAList",
+				})).
 				WithProperty("csr", openapi3.NewStringSchema()).
-				WithProperty("crt", openapi3.NewStringSchema()),
+				WithProperty("crt", openapi3.NewStringSchema()).
+				WithProperty("creation_timestamp", openapi3.NewStringSchema()).
+				WithProperty("modification_timestamp", openapi3.NewStringSchema()),
 		),
 		"Subject": openapi3.NewSchemaRef("",
 			openapi3.NewObjectSchema().
@@ -64,6 +72,9 @@ func NewOpenAPI3(config config.Config) openapi3.T {
 				WithProperty("country", openapi3.NewStringSchema()).
 				WithProperty("state", openapi3.NewStringSchema()).
 				WithProperty("locality", openapi3.NewStringSchema()),
+		),
+		"CAList": openapi3.NewSchemaRef("",
+			openapi3.NewStringSchema(),
 		),
 		"KeyMetadata": openapi3.NewSchemaRef("",
 			openapi3.NewObjectSchema().
@@ -79,8 +90,7 @@ func NewOpenAPI3(config config.Config) openapi3.T {
 				WithRequired(true).
 				WithJSONSchema(openapi3.NewSchema().
 					WithProperty("csr", openapi3.NewStringSchema()).
-					WithProperty("dms_name", openapi3.NewStringSchema()).
-					WithProperty("url", openapi3.NewStringSchema()),
+					WithProperty("name", openapi3.NewStringSchema()),
 				),
 		},
 		"postDMSFormRequest": &openapi3.RequestBodyRef{
@@ -88,14 +98,13 @@ func NewOpenAPI3(config config.Config) openapi3.T {
 				WithDescription("Request used for creating a new DMS Form").
 				WithRequired(true).
 				WithJSONSchema(openapi3.NewSchema().
-					WithProperty("dms_name", openapi3.NewStringSchema()).
+					WithProperty("name", openapi3.NewStringSchema()).
 					WithPropertyRef("subject", &openapi3.SchemaRef{
 						Ref: "#/components/schemas/Subject",
 					}).
 					WithPropertyRef("key_metadata", &openapi3.SchemaRef{
 						Ref: "#/components/schemas/KeyMetadata",
-					}).
-					WithProperty("url", openapi3.NewStringSchema()),
+					}),
 				),
 		},
 		"getPendingCSRRequest": &openapi3.RequestBodyRef{
@@ -110,8 +119,10 @@ func NewOpenAPI3(config config.Config) openapi3.T {
 				WithDescription("Change DMS status ").
 				WithRequired(true).
 				WithJSONSchema(openapi3.NewSchema().
-					WithProperty("status", openapi3.NewStringSchema()),
-				),
+					WithProperty("status", openapi3.NewStringSchema()).
+					WithPropertyRef("authorized_cas", arrayOf(&openapi3.SchemaRef{
+						Ref: "#/components/schemas/CAList",
+					}))),
 		},
 	}
 
@@ -153,6 +164,15 @@ func NewOpenAPI3(config config.Config) openapi3.T {
 					WithPropertyRef("DMSs", arrayOf(&openapi3.SchemaRef{
 						Ref: "#/components/schemas/DMS",
 					}))),
+				),
+		},
+		"GetDMSByIDResponse": &openapi3.ResponseRef{
+			Value: openapi3.NewResponse().
+				WithDescription("Response returned back after getting pending CSRs.").
+				WithContent(openapi3.NewContentWithJSONSchema(openapi3.NewSchema().
+					WithPropertyRef("dms", &openapi3.SchemaRef{
+						Ref: "#/components/schemas/DMS",
+					})),
 				),
 		},
 
@@ -287,6 +307,7 @@ func NewOpenAPI3(config config.Config) openapi3.T {
 				},
 			},
 		},
+
 		"/v1/{id}": &openapi3.PathItem{
 			Put: &openapi3.Operation{
 				OperationID: "PutChangeDMSStatus",
@@ -294,7 +315,7 @@ func NewOpenAPI3(config config.Config) openapi3.T {
 				Parameters: []*openapi3.ParameterRef{
 					{
 						Value: openapi3.NewPathParameter("id").
-							WithSchema(openapi3.NewIntegerSchema()),
+							WithSchema(openapi3.NewStringSchema()),
 					},
 				},
 				RequestBody: &openapi3.RequestBodyRef{
@@ -318,13 +339,40 @@ func NewOpenAPI3(config config.Config) openapi3.T {
 					},
 				},
 			},
+			Get: &openapi3.Operation{
+				OperationID: "GetDMSbyID",
+				Description: "Get DMS by ID",
+				Parameters: []*openapi3.ParameterRef{
+					{
+						Value: openapi3.NewPathParameter("id").
+							WithSchema(openapi3.NewStringSchema()),
+					},
+				},
+				Responses: openapi3.Responses{
+					"400": &openapi3.ResponseRef{
+						Ref: "#/components/responses/ErrorResponse",
+					},
+					"401": &openapi3.ResponseRef{
+						Ref: "#/components/responses/ErrorResponse",
+					},
+					"403": &openapi3.ResponseRef{
+						Ref: "#/components/responses/ErrorResponse",
+					},
+					"500": &openapi3.ResponseRef{
+						Ref: "#/components/responses/ErrorResponse",
+					},
+					"200": &openapi3.ResponseRef{
+						Ref: "#/components/responses/GetDMSByIDResponse",
+					},
+				},
+			},
 			Delete: &openapi3.Operation{
 				OperationID: "DeleteDMS",
 				Description: "Delete DMS by id",
 				Parameters: []*openapi3.ParameterRef{
 					{
 						Value: openapi3.NewPathParameter("id").
-							WithSchema(openapi3.NewIntegerSchema()),
+							WithSchema(openapi3.NewStringSchema()),
 					},
 				},
 				Responses: openapi3.Responses{
@@ -353,7 +401,7 @@ func NewOpenAPI3(config config.Config) openapi3.T {
 				Parameters: []*openapi3.ParameterRef{
 					{
 						Value: openapi3.NewPathParameter("id").
-							WithSchema(openapi3.NewIntegerSchema()),
+							WithSchema(openapi3.NewStringSchema()),
 					},
 				},
 				Responses: openapi3.Responses{

@@ -21,6 +21,7 @@ type Endpoints struct {
 	PutChangeDMSStatusEndpoint endpoint.Endpoint
 	DeleteDMSEndpoint          endpoint.Endpoint
 	GetDMSsEndpoint            endpoint.Endpoint
+	GetDMSbyIDEndpoint         endpoint.Endpoint
 	GetCertificateEndpoint     endpoint.Endpoint
 }
 
@@ -46,6 +47,11 @@ func MakeServerEndpoints(s service.Service, otTracer stdopentracing.Tracer) Endp
 		getDMSsEndpoint = MakeGetDMSsEndpoint(s)
 		getDMSsEndpoint = opentracing.TraceServer(otTracer, "GetDMSs")(getDMSsEndpoint)
 	}
+	var getDMSbyIDEndpoint endpoint.Endpoint
+	{
+		getDMSbyIDEndpoint = MakeGetDMSbyIDEndpoint(s)
+		getDMSbyIDEndpoint = opentracing.TraceServer(otTracer, "GetDMSs")(getDMSbyIDEndpoint)
+	}
 	var putChangeDMSStatusEndpoint endpoint.Endpoint
 	{
 		putChangeDMSStatusEndpoint = MakeChangeDMSStatusEndpoint(s)
@@ -69,6 +75,7 @@ func MakeServerEndpoints(s service.Service, otTracer stdopentracing.Tracer) Endp
 		PutChangeDMSStatusEndpoint: putChangeDMSStatusEndpoint,
 		DeleteDMSEndpoint:          deleteDmsEndpoint,
 		GetDMSsEndpoint:            getDMSsEndpoint,
+		GetDMSbyIDEndpoint:         getDMSbyIDEndpoint,
 		GetCertificateEndpoint:     getCertificateEndpoint,
 	}
 }
@@ -105,8 +112,8 @@ func MakeCreateDMSFormEndpoint(s service.Service) endpoint.Endpoint {
 			}
 			return nil, &valError
 		}
-		privKey, dms, e := s.CreateDMSForm(ctx, dms.Subject(req.Subject), dms.PrivateKeyMetadata(req.KeyMetadata), req.Url, req.DmsName)
-		return PostDmsCreationFormResponse{PrivKey: privKey, Dms: dms, Err: e}, nil
+		privKey, dms, e := s.CreateDMSForm(ctx, dms.Subject(req.Subject), dms.PrivateKeyMetadata(req.KeyMetadata), req.DmsName)
+		return PostDmsCreationFormResponse{PrivKey: privKey, Dms: dms}, e
 	}
 }
 
@@ -114,6 +121,13 @@ func MakeGetDMSsEndpoint(s service.Service) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
 		_ = request.(GetDmsRequest)
 		dmss, err := s.GetDMSs(ctx)
+		return dmss, err
+	}
+}
+func MakeGetDMSbyIDEndpoint(s service.Service) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
+		req := request.(GetDmsIDRequest)
+		dmss, err := s.GetDMSbyID(ctx, req.ID)
 		return dmss, err
 	}
 }
@@ -128,7 +142,7 @@ func MakeChangeDMSStatusEndpoint(s service.Service) endpoint.Endpoint {
 			}
 			return nil, &valError
 		}
-		dms, err := s.UpdateDMSStatus(ctx, req.Status, req.ID)
+		dms, err := s.UpdateDMSStatus(ctx, req.Status, req.ID, req.CAs)
 		return dms, err
 	}
 }
@@ -161,8 +175,12 @@ type HealthResponse struct {
 }
 type GetDmsRequest struct{}
 
+type GetDmsIDRequest struct {
+	ID string
+}
+
 type GetCRTRequest struct {
-	ID int
+	ID string
 }
 
 type GetCRTResponse struct {
@@ -172,8 +190,7 @@ type GetCRTResponse struct {
 
 type PostCSRRequest struct {
 	Csr     string `json:"csr" validate:"required"`
-	DmsName string `json:"dms_name" validate:"required"`
-	Url     string `json:"url" validate:"required"`
+	DmsName string `json:"name" validate:"required"`
 }
 
 func ValidatetPostCSRRequest(request PostCSRRequest) error {
@@ -182,7 +199,7 @@ func ValidatetPostCSRRequest(request PostCSRRequest) error {
 }
 
 type PostDmsCreationFormRequest struct {
-	DmsName string `json:"dms_name" validate:"required"`
+	DmsName string `json:"name" validate:"required"`
 	Subject struct {
 		CN string `json:"common_name"`
 		O  string `json:"organization"`
@@ -192,26 +209,22 @@ type PostDmsCreationFormRequest struct {
 		L  string `json:"locality"`
 	} `json:"subject"`
 	KeyMetadata struct {
-		KeyType string `json:"type" validate:"oneof='rsa' 'ec'"`
-		KeyBits int    `json:"bits" validate:"required"`
+		KeyType     string `json:"type" validate:"oneof='rsa' 'ec'"`
+		KeyBits     int    `json:"bits" validate:"required"`
+		KeyStrength string `json:"strength,omitempty"`
 	} `json:"key_metadata" validate:"required"`
-	Url string `json:"url" validate:"required"`
 }
 
 func ValidatePostDmsCreationFormRequest(request PostDmsCreationFormRequest) error {
 	CreateCARequestStructLevelValidation := func(sl validator.StructLevel) {
 		req := sl.Current().Interface().(PostDmsCreationFormRequest)
 		switch req.KeyMetadata.KeyType {
-		case "rsa":
+		case "RSA":
 			if math.Mod(float64(req.KeyMetadata.KeyBits), 1024) != 0 || req.KeyMetadata.KeyBits < 2048 {
 				sl.ReportError(req.KeyMetadata.KeyBits, "bits", "Bits", "bits1024multipleAndGt2048", "")
 			}
-		case "ec":
-			if req.KeyMetadata.KeyBits != 224 {
-				sl.ReportError(req.KeyMetadata.KeyBits, "bits", "Bits", "bitsEcdsaMultiple", "")
-			} else if req.KeyMetadata.KeyBits != 256 {
-				sl.ReportError(req.KeyMetadata.KeyBits, "bits", "Bits", "bitsEcdsaMultiple", "")
-			} else if req.KeyMetadata.KeyBits != 384 {
+		case "EC":
+			if req.KeyMetadata.KeyBits != 224 && req.KeyMetadata.KeyBits != 256 && req.KeyMetadata.KeyBits != 384 {
 				sl.ReportError(req.KeyMetadata.KeyBits, "bits", "Bits", "bitsEcdsaMultiple", "")
 			}
 		}
@@ -244,12 +257,25 @@ type PostDirectCsr struct {
 }
 
 type PutChangeDmsStatusRequest struct {
-	Status string `json:"status" validate:"required"`
-	ID     int    `validate:"required"`
+	Status string   `json:"status" validate:"oneof='PENDING_APPROVAL' 'APPROVED'  'DENIED'  'REVOKED'"`
+	CAs    []string `json:"authorized_cas"`
+	ID     string   `validate:"required"`
 }
 
 func ValidatetPutChangeDmsStatusRequest(request PutChangeDmsStatusRequest) error {
+	CreateCARequestStructLevelValidation := func(sl validator.StructLevel) {
+		req := sl.Current().Interface().(PutChangeDmsStatusRequest)
+		switch req.Status {
+		case "APPROVED":
+			if req.CAs == nil {
+				sl.ReportError(req.CAs, "CAs", "CAs", "missingCAsList", "")
+			}
+		}
+
+	}
+
 	validate := validator.New()
+	validate.RegisterStructValidation(CreateCARequestStructLevelValidation, PutChangeDmsStatusRequest{})
 	return validate.Struct(request)
 }
 
@@ -261,7 +287,7 @@ type PutChangeCSRsResponse struct {
 func (r PutChangeCSRsResponse) error() error { return r.Err }
 
 type DeleteCSRRequest struct {
-	ID int
+	ID string
 }
 
 type DeleteCSRResponse struct {

@@ -47,6 +47,16 @@ func main() {
 	}
 	level.Info(logger).Log("msg", "Environment configuration values loaded")
 
+	if strings.ToLower(cfg.DebugMode) == "debug" {
+		{
+			logger = log.NewJSONLogger(os.Stdout)
+			logger = log.With(logger, "ts", log.DefaultTimestampUTC)
+			logger = level.NewFilter(logger, level.AllowDebug())
+			logger = log.With(logger, "caller", log.DefaultCaller)
+		}
+		level.Debug(logger).Log("msg", "Starting Lamassu-DMS-Enroller in debug mode...")
+	}
+
 	dmsConnStr := "dbname=" + cfg.PostgresDB + " user=" + cfg.PostgresUser + " password=" + cfg.PostgresPassword + " host=" + cfg.PostgresHostname + " port=" + cfg.PostgresPort + " sslmode=disable"
 	dmsDb, err := dmsdb.NewDB("postgres", dmsConnStr, logger)
 	if err != nil {

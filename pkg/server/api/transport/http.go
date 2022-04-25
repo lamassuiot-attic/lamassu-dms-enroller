@@ -6,7 +6,6 @@ import (
 	"encoding/pem"
 	"errors"
 	"net/http"
-	"strconv"
 
 	"github.com/gorilla/mux"
 	"github.com/lamassuiot/lamassu-dms-enroller/pkg/server/api/endpoint"
@@ -108,7 +107,16 @@ func MakeHTTPHandler(s service.Service, logger log.Logger, otTracer stdopentraci
 			httptransport.ServerBefore(HTTPToContext(logger)),
 		)...,
 	))
-
+	r.Methods("GET").Path("/v1/{id}").Handler(httptransport.NewServer(
+		e.GetDMSbyIDEndpoint,
+		decodeGetDMSbyIDRequest,
+		encodeResponse,
+		append(
+			options,
+			httptransport.ServerBefore(opentracing.HTTPToContext(otTracer, "GetDMSbyID", logger)),
+			httptransport.ServerBefore(HTTPToContext(logger)),
+		)...,
+	))
 	r.Methods("PUT").Path("/v1/{id}").Handler(httptransport.NewServer(
 		e.PutChangeDMSStatusEndpoint,
 		decodeputChangeDmsStatusRequest,
@@ -154,7 +162,17 @@ func decodeGetDMSsRequest(ctx context.Context, r *http.Request) (request interfa
 	var req endpoint.GetDmsRequest
 	return req, nil
 }
-
+func decodeGetDMSbyIDRequest(ctx context.Context, r *http.Request) (request interface{}, err error) {
+	vars := mux.Vars(r)
+	id, ok := vars["id"]
+	if !ok {
+		return nil, ErrMissingDMSID()
+	}
+	if err != nil {
+		return nil, err
+	}
+	return endpoint.GetDmsIDRequest{ID: id}, nil
+}
 func decodePostCreateDMSFormRequest(ctx context.Context, r *http.Request) (request interface{}, err error) {
 	vars := mux.Vars(r)
 	name, ok := vars["name"]
@@ -194,19 +212,19 @@ func decodeputChangeDmsStatusRequest(ctx context.Context, r *http.Request) (requ
 	if !ok {
 		return nil, ErrMissingDMSID()
 	}
-	idNum, err := strconv.Atoi(id)
 	if err != nil {
 		return nil, err
 	}
-	var statusRequest endpoint.PutChangeDmsStatusRequest
-	if err := json.NewDecoder(r.Body).Decode(&statusRequest); err != nil {
+	var Request endpoint.PutChangeDmsStatusRequest
+	if err := json.NewDecoder(r.Body).Decode(&Request); err != nil {
 		return nil, err
 	}
-	if statusRequest.Status == "" {
+	if Request.Status == "" {
 		return nil, ErrMissingDMSStatus()
 	}
-	statusRequest.ID = idNum
-	return statusRequest, nil
+
+	Request.ID = id
+	return Request, nil
 
 }
 
@@ -216,11 +234,10 @@ func decodeDeleteCSRRequest(ctx context.Context, r *http.Request) (request inter
 	if !ok {
 		return nil, ErrMissingDMSID()
 	}
-	idNum, err := strconv.Atoi(id)
 	if err != nil {
 		return nil, err
 	}
-	return endpoint.DeleteCSRRequest{ID: idNum}, nil
+	return endpoint.DeleteCSRRequest{ID: id}, nil
 }
 
 func decodeGetCRTRequest(ctx context.Context, r *http.Request) (request interface{}, err error) {
@@ -229,11 +246,10 @@ func decodeGetCRTRequest(ctx context.Context, r *http.Request) (request interfac
 	if !ok {
 		return nil, ErrMissingDMSID()
 	}
-	idNum, err := strconv.Atoi(id)
 	if err != nil {
 		return nil, err
 	}
-	return endpoint.GetCRTRequest{ID: idNum}, nil
+	return endpoint.GetCRTRequest{ID: id}, nil
 }
 
 func encodeResponse(ctx context.Context, w http.ResponseWriter, response interface{}) error {

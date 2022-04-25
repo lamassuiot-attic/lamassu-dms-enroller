@@ -14,6 +14,7 @@ require (
 	github.com/go-openapi/runtime v0.21.0
 	github.com/go-playground/validator/v10 v10.10.0
 	github.com/gorilla/mux v1.8.0
+	github.com/jakehl/goid v1.1.0
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/lamassuiot/lamassu-ca v1.0.15
 	github.com/lib/pq v1.8.0

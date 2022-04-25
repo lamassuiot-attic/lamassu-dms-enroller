@@ -18,6 +18,8 @@ type Config struct {
 	LamassuCACertFile string `split_words:"true"`
 	LamassuCAAddress  string `split_words:"true"`
 
+	DebugMode string `required:"true" split_words:"true"`
+
 	CertFile string `split_words:"true"`
 	KeyFile  string `split_words:"true"`
 

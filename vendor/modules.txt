@@ -88,6 +88,9 @@ github.com/golang/protobuf/ptypes/timestamp
 # github.com/gorilla/mux v1.8.0
 ## explicit
 github.com/gorilla/mux
+# github.com/jakehl/goid v1.1.0
+## explicit
+github.com/jakehl/goid
 # github.com/josharian/intern v1.0.0
 github.com/josharian/intern
 # github.com/kelseyhightower/envconfig v1.4.0

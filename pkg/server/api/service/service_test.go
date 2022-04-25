@@ -20,27 +20,27 @@ func TestUpdateDMSStatus(t *testing.T) {
 	testCases := []struct {
 		name      string
 		DMSstatus string
-		id        int
+		id        string
 		ret       error
 	}{
-		{"Status aproved prevDMS pending error update", dms.ApprovedStatus, 2, errors.New("Error Update By ID")},
-		{"Status Revoked prevDMS not approved", dms.RevokedStatus, 2, nil},
-		{"Status Revoked prevDMS not approved", dms.ApprovedStatus, 2, nil},
-		{"Status Default", "", 2, nil},
-		{"Error getting certificate Revoked", dms.RevokedStatus, 1, errors.New("Error revoking certificate")},
-		{"Error approving cert", dms.ApprovedStatus, 2, errors.New("Error revoking certificate")},
-		{"Error Parse Certificate Request", dms.ApprovedStatus, 2, errors.New("asn1: structure error: tags don't match (2 vs {class:2 tag:0 length:3 isCompound:true}) {optional:false explicit:false application:false private:false defaultValue:<nil> tag:<nil> stringType:0 timeType:0 set:false omitEmpty:false} int @2")},
+		{"Status aproved prevDMS pending error update", dms.ApprovedStatus, "2", errors.New("Error Update By ID")},
+		{"Status Revoked prevDMS not approved", dms.RevokedStatus, "2", nil},
+		{"Status Revoked prevDMS not approved", dms.ApprovedStatus, "2", nil},
+		{"Status Default", "", "2", nil},
+		{"Error getting certificate Revoked", dms.RevokedStatus, "1", errors.New("Error revoking certificate")},
+		{"Error approving cert", dms.ApprovedStatus, "2", errors.New("Error revoking certificate")},
+		{"Error Parse Certificate Request", dms.ApprovedStatus, "2", errors.New("asn1: structure error: tags don't match (2 vs {class:2 tag:0 length:3 isCompound:true}) {optional:false explicit:false application:false private:false defaultValue:<nil> tag:<nil> stringType:0 timeType:0 set:false omitEmpty:false} int @2")},
 
-		{"Error revoking cert", dms.RevokedStatus, 1, errors.New("Error revoking certificate")},
-		{"Correct Approved", dms.ApprovedStatus, 1, nil},
-		{"Correct Revoked", dms.RevokedStatus, 1, nil},
-		{"Correct Denied", dms.DeniedStatus, 1, nil},
-		{"Error finding ID", "", 1, errors.New("Error Select By ID")},
-		{"Error getting certificate Approved", dms.ApprovedStatus, 1, errors.New("Error Update By ID")},
+		{"Error revoking cert", dms.RevokedStatus, "1", errors.New("Error revoking certificate")},
+		{"Correct Approved", dms.ApprovedStatus, "1", nil},
+		{"Correct Revoked", dms.RevokedStatus, "1", nil},
+		{"Correct Denied", dms.DeniedStatus, "1", nil},
+		{"Error finding ID", "", "1", errors.New("Error Select By ID")},
+		{"Error getting certificate Approved", dms.ApprovedStatus, "1", errors.New("Error Update By ID")},
 
-		{"Error getting certificate Denied", dms.DeniedStatus, 4, errors.New("Error Update By ID")},
-		{"Error revoked update", dms.RevokedStatus, 1, errors.New("Error Update By ID")},
-		{"Error denied update", dms.DeniedStatus, 2, errors.New("Error Update By ID")},
+		{"Error getting certificate Denied", dms.DeniedStatus, "4", errors.New("Error Update By ID")},
+		{"Error revoked update", dms.RevokedStatus, "1", errors.New("Error Update By ID")},
+		{"Error denied update", dms.DeniedStatus, "2", errors.New("Error Update By ID")},
 	}
 	for _, tc := range testCases {
 
@@ -91,7 +91,8 @@ func TestUpdateDMSStatus(t *testing.T) {
 				ctx = context.WithValue(ctx, "SignCertificateRequestFail", false)
 				ctx = context.WithValue(ctx, "DBCsrBase64", false)
 			}
-			_, err := srv.UpdateDMSStatus(ctx, tc.DMSstatus, tc.id)
+			//TODO: test with CA list
+			_, err := srv.UpdateDMSStatus(ctx, tc.DMSstatus, tc.id, nil)
 			if err != nil {
 				if err.Error() != tc.ret.Error() {
 					t.Errorf("Got result is %s; want %s", err, tc.ret)
@@ -185,27 +186,27 @@ func TestCreateDMSForm(t *testing.T) {
 	}
 
 	RSAkey := dms.PrivateKeyMetadata{
-		KeyType: "rsa",
+		KeyType: "RSA",
 		KeyBits: 4096,
 	}
 	ECkeyUnsupported := dms.PrivateKeyMetadata{
-		KeyType: "ec",
+		KeyType: "EC",
 		KeyBits: 4096,
 	}
 	ECkey224 := dms.PrivateKeyMetadata{
-		KeyType: "ec",
+		KeyType: "EC",
 		KeyBits: 224,
 	}
 	ECkey256 := dms.PrivateKeyMetadata{
-		KeyType: "ec",
+		KeyType: "EC",
 		KeyBits: 256,
 	}
 	ECkey384 := dms.PrivateKeyMetadata{
-		KeyType: "ec",
+		KeyType: "EC",
 		KeyBits: 384,
 	}
 	ECkey521 := dms.PrivateKeyMetadata{
-		KeyType: "ec",
+		KeyType: "EC",
 		KeyBits: 521,
 	}
 	Undeclaredkey := dms.PrivateKeyMetadata{
@@ -240,7 +241,7 @@ func TestCreateDMSForm(t *testing.T) {
 			} else {
 				ctx = context.WithValue(ctx, "DBInsert", false)
 			}
-			_, _, err := srv.CreateDMSForm(ctx, tc.subject, tc.key, tc.url, tc.dmsName)
+			_, _, err := srv.CreateDMSForm(ctx, tc.subject, tc.key, tc.dmsName)
 			if err != nil {
 				if err.Error() != tc.ret.Error() {
 					t.Errorf("Got result is %s; want %s", err, tc.ret)
@@ -255,13 +256,13 @@ func TestDeleteDMS(t *testing.T) {
 
 	testCases := []struct {
 		name string
-		id   int
+		id   string
 		ret  error
 	}{
 
-		{"Correct", 1, nil},
-		{"Error finding ID", 1, errors.New("Error Select By ID")},
-		{"Error Delete", 3, errors.New("Error Delete")},
+		{"Correct", "1", nil},
+		{"Error finding ID", "1", errors.New("Error Select By ID")},
+		{"Error Delete", "3", errors.New("Error Delete")},
 	}
 	for _, tc := range testCases {
 
@@ -292,13 +293,13 @@ func TestGetDMSCertificate(t *testing.T) {
 
 	testCases := []struct {
 		name string
-		id   int
+		id   string
 		ret  error
 	}{
 
-		{"Correct", 1, nil},
-		{"Error finding ID", 1, errors.New("Error Select By ID")},
-		{"Error getting certificate", 1, errors.New("Error getting certificate")},
+		{"Correct", "1", nil},
+		{"Error finding ID", "1", errors.New("Error Select By ID")},
+		{"Error getting certificate", "1", errors.New("Error getting certificate")},
 	}
 	for _, tc := range testCases {
 

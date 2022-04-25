@@ -18,8 +18,10 @@ import (
 	"sync"
 
 	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/log/level"
 	lamassucaclient "github.com/lamassuiot/lamassu-ca/pkg/client"
 
+	"github.com/jakehl/goid"
 	"github.com/lamassuiot/lamassu-dms-enroller/pkg/server/models/dms"
 	dmsstore "github.com/lamassuiot/lamassu-dms-enroller/pkg/server/models/dms/store"
 	"github.com/lamassuiot/lamassu-dms-enroller/pkg/server/utils"
@@ -28,11 +30,12 @@ import (
 type Service interface {
 	Health(ctx context.Context) bool
 	CreateDMS(ctx context.Context, csrBase64Encoded string, dmsName string) (dms.DMS, error)
-	CreateDMSForm(ctx context.Context, subject dms.Subject, PrivateKeyMetadata dms.PrivateKeyMetadata, url string, dmsName string) (string, dms.DMS, error)
-	UpdateDMSStatus(ctx context.Context, status string, id int) (dms.DMS, error)
-	DeleteDMS(ctx context.Context, id int) error
+	CreateDMSForm(ctx context.Context, subject dms.Subject, PrivateKeyMetadata dms.PrivateKeyMetadata, dmsName string) (string, dms.DMS, error)
+	UpdateDMSStatus(ctx context.Context, status string, id string, CAList []string) (dms.DMS, error)
+	DeleteDMS(ctx context.Context, id string) error
 	GetDMSs(ctx context.Context) ([]dms.DMS, error)
-	GetDMSCertificate(ctx context.Context, id int) (*x509.Certificate, error)
+	GetDMSbyID(ctx context.Context, id string) (dms.DMS, error)
+	GetDMSCertificate(ctx context.Context, id string) (*x509.Certificate, error)
 }
 
 type enrollerService struct {
@@ -72,6 +75,7 @@ func (s *enrollerService) CreateDMS(ctx context.Context, csrBase64Encoded string
 	keyType, keyBits := getPublicKeyInfo(csr)
 
 	d := dms.DMS{
+		Id:        goid.NewV4UUID().String(),
 		Name:      dmsName,
 		CsrBase64: csrBase64Encoded,
 		Status:    dms.PendingStatus,
@@ -90,7 +94,7 @@ func (s *enrollerService) CreateDMS(ctx context.Context, csrBase64Encoded string
 	return s.dmsDBStore.SelectByID(ctx, dmsId)
 }
 
-func (s *enrollerService) CreateDMSForm(ctx context.Context, subject dms.Subject, PrivateKeyMetadata dms.PrivateKeyMetadata, url string, dmsName string) (string, dms.DMS, error) {
+func (s *enrollerService) CreateDMSForm(ctx context.Context, subject dms.Subject, PrivateKeyMetadata dms.PrivateKeyMetadata, dmsName string) (string, dms.DMS, error) {
 	subj := pkix.Name{
 		CommonName:         subject.CN,
 		Country:            []string{subject.C},
@@ -100,7 +104,7 @@ func (s *enrollerService) CreateDMSForm(ctx context.Context, subject dms.Subject
 		OrganizationalUnit: []string{subject.OU},
 	}
 
-	if PrivateKeyMetadata.KeyType == "rsa" {
+	if PrivateKeyMetadata.KeyType == "RSA" {
 		privKey, _ := rsa.GenerateKey(rand.Reader, PrivateKeyMetadata.KeyBits)
 		csrBytes, err := generateCSR(ctx, PrivateKeyMetadata.KeyType, PrivateKeyMetadata.KeyBits, privKey, subj)
 		if err != nil {
@@ -139,10 +143,12 @@ func (s *enrollerService) CreateDMSForm(ctx context.Context, subject dms.Subject
 			err = errors.New("Unsupported key length")
 		}
 		if err != nil {
+			level.Debug(s.logger).Log("err", err)
 			return "", dms.DMS{}, err
 		}
-		privkey_bytesm, err := x509.MarshalECPrivateKey(priv)
+		privkey_bytesm, err := x509.MarshalPKCS8PrivateKey(priv)
 		if err != nil {
+			level.Debug(s.logger).Log("err", err)
 			return "", dms.DMS{}, err
 		}
 		privkey_pem := string(pem.EncodeToMemory(
@@ -154,11 +160,13 @@ func (s *enrollerService) CreateDMSForm(ctx context.Context, subject dms.Subject
 		privkey_pem = utils.EcodeB64(privkey_pem)
 		csrBytes, err := generateCSR(ctx, PrivateKeyMetadata.KeyType, PrivateKeyMetadata.KeyBits, priv, subj)
 		if err != nil {
+			level.Debug(s.logger).Log("err", err)
 			return "", dms.DMS{}, err
 		}
 		csrEncoded := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE REQUEST", Bytes: csrBytes})
-		csr, err := s.CreateDMS(ctx, string(csrEncoded), dmsName)
+		csr, err := s.CreateDMS(ctx, utils.EcodeB64(string(csrEncoded)), dmsName)
 		if err != nil {
+			level.Debug(s.logger).Log("err", err)
 			return "", dms.DMS{}, err
 		} else {
 			return privkey_pem, csr, nil
@@ -190,7 +198,7 @@ func generateCSR(ctx context.Context, keyType string, keyBits int, priv interfac
 	return csrBytes, err
 }
 
-func (s *enrollerService) UpdateDMSStatus(ctx context.Context, DMSstatus string, id int) (dms.DMS, error) {
+func (s *enrollerService) UpdateDMSStatus(ctx context.Context, DMSstatus string, id string, CAList []string) (dms.DMS, error) {
 	var err error
 	var d dms.DMS
 	prevDms, err := s.dmsDBStore.SelectByID(ctx, id)
@@ -214,10 +222,16 @@ func (s *enrollerService) UpdateDMSStatus(ctx context.Context, DMSstatus string,
 			if err != nil {
 				return dms.DMS{}, err
 			}
-			d, err = s.dmsDBStore.UpdateByID(ctx, id, dms.ApprovedStatus, InsertNth(ToHexInt(crt.SerialNumber), 2), "")
+			err = s.dmsDBStore.InsertAuthorizedCAs(ctx, id, CAList)
 			if err != nil {
 				return dms.DMS{}, err
 			}
+			d, err = s.dmsDBStore.UpdateByID(ctx, id, dms.ApprovedStatus, InsertNth(ToHexInt(crt.SerialNumber), 2), "")
+			if err != nil {
+				s.dmsDBStore.DeleteAuthorizedCAs(ctx, id)
+				return dms.DMS{}, err
+			}
+
 			var cb []byte
 			cb = append(cb, crt.Raw...)
 			certificate := pem.Block{Type: "CERTIFICATE", Bytes: cb}
@@ -235,6 +249,10 @@ func (s *enrollerService) UpdateDMSStatus(ctx context.Context, DMSstatus string,
 				return dms.DMS{}, err
 			}
 			err = s.RevokeCert(ctx, prevDms.SerialNumber)
+			if err != nil {
+				return dms.DMS{}, err
+			}
+			err = s.dmsDBStore.DeleteAuthorizedCAs(ctx, id)
 			if err != nil {
 				return dms.DMS{}, err
 			}
@@ -263,7 +281,7 @@ func (s *enrollerService) RevokeCert(ctx context.Context, serialToRevoke string)
 	return err
 }
 
-func (s *enrollerService) ApprobeCSR(ctx context.Context, id int, csr *x509.CertificateRequest) (*x509.Certificate, error) {
+func (s *enrollerService) ApprobeCSR(ctx context.Context, id string, csr *x509.CertificateRequest) (*x509.Certificate, error) {
 
 	crt, err := s.lamassuCaClient.SignCertificateRequest(ctx, "Lamassu-DMS-Enroller", csr, "dmsenroller", true)
 	if err != nil {
@@ -273,7 +291,7 @@ func (s *enrollerService) ApprobeCSR(ctx context.Context, id int, csr *x509.Cert
 	return crt, nil
 }
 
-func (s *enrollerService) DeleteDMS(ctx context.Context, id int) error {
+func (s *enrollerService) DeleteDMS(ctx context.Context, id string) error {
 	d, err := s.dmsDBStore.SelectByID(ctx, id)
 	if err != nil {
 		return err
@@ -282,6 +300,12 @@ func (s *enrollerService) DeleteDMS(ctx context.Context, id int) error {
 		err = s.dmsDBStore.Delete(ctx, id)
 		if err != nil {
 			return err
+		}
+		if d.Status == dms.RevokedStatus {
+			err = s.dmsDBStore.DeleteAuthorizedCAs(ctx, id)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return err
@@ -303,12 +327,45 @@ func (s *enrollerService) GetDMSs(ctx context.Context) ([]dms.DMS, error) {
 			CN: lamassuCert.Subject.CN,
 		}
 		item.CerificateBase64 = lamassuCert.CertContent.CerificateBase64
+		CAs, err := s.dmsDBStore.SelectByDMSIDAuthorizedCAs(ctx, item.Id)
+		if err != nil {
+			return []dms.DMS{}, err
+		}
+		for _, ca := range CAs {
+			item.AuthorizedCAs = append(item.AuthorizedCAs, ca.CaName)
+		}
 		dmsList = append(dmsList, item)
 	}
+
 	return dmsList, nil
 }
 
-func (s *enrollerService) GetDMSCertificate(ctx context.Context, id int) (*x509.Certificate, error) {
+func (s *enrollerService) GetDMSbyID(ctx context.Context, id string) (dms.DMS, error) {
+	d, err := s.dmsDBStore.SelectByID(ctx, id)
+	if err != nil {
+		return dms.DMS{}, err
+	}
+	lamassuCert, _ := s.lamassuCaClient.GetCert(ctx, "Lamassu-DMS-Enroller", d.SerialNumber, "dmsenroller")
+	d.Subject = dms.Subject{
+		C:  lamassuCert.Subject.C,
+		ST: lamassuCert.Subject.ST,
+		L:  lamassuCert.Subject.L,
+		O:  lamassuCert.Subject.O,
+		OU: lamassuCert.Subject.OU,
+		CN: lamassuCert.Subject.CN,
+	}
+	d.CerificateBase64 = lamassuCert.CertContent.CerificateBase64
+	CAs, err := s.dmsDBStore.SelectByDMSIDAuthorizedCAs(ctx, d.Id)
+	if err != nil {
+		return dms.DMS{}, err
+	}
+	for _, ca := range CAs {
+		d.AuthorizedCAs = append(d.AuthorizedCAs, ca.CaName)
+	}
+	return d, nil
+}
+
+func (s *enrollerService) GetDMSCertificate(ctx context.Context, id string) (*x509.Certificate, error) {
 	d, err := s.dmsDBStore.SelectByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -367,9 +424,9 @@ func getPublicKeyInfo(cert *x509.CertificateRequest) (string, int) {
 	case "RSA":
 		keyBits = cert.PublicKey.(*rsa.PublicKey).N.BitLen()
 		return "RSA", keyBits
-	case "ECDSA":
+	case "EC":
 		keyBits = cert.PublicKey.(*ecdsa.PublicKey).Params().BitSize
-		return "ECDSA", keyBits
+		return "EC", keyBits
 	}
 
 	return "UNKOWN_KEY_TYPE", -1
