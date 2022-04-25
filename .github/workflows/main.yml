@@ -21,21 +21,21 @@ jobs:
         with:
           go-version: '1.16'
 
-      - name: Run Test
-        run:
-          go test -v ./... -covermode=count -coverprofile=coverage.out
-          go tool cover -func=coverage.out -o=coverage.out
+      # - name: Run Test
+      #   run:
+      #     go test -v ./... -covermode=count -coverprofile=coverage.out
+      #     go tool cover -func=coverage.out -o=coverage.out
 
-      - name: Go Coverage Badge  # Pass the `coverage.out` output to this action
-        uses: tj-actions/coverage-badge-go@v1.1
-        with:
-          filename: coverage.out
+      # - name: Go Coverage Badge  # Pass the `coverage.out` output to this action
+      #   uses: tj-actions/coverage-badge-go@v1.1
+      #   with:
+      #     filename: coverage.out
 
-      - name: Verify Changed files
-        uses: tj-actions/verify-changed-files@v8.1
-        id: verify-changed-files
-        with:
-          files: README.md
+      # - name: Verify Changed files
+      #   uses: tj-actions/verify-changed-files@v8.1
+      #   id: verify-changed-files
+      #   with:
+      #     files: README.md
 
       #If README file is modified by tj-actions/coverage-badge-go, push README changes
       - name: Push changes
