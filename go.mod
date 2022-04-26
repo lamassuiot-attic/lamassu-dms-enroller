@@ -2,10 +2,6 @@ module github.com/lamassuiot/lamassu-dms-enroller
 
 go 1.16
 
-// replace github.com/lamassuiot/lamassu-ca => /home/ikerlan/lamassu/lamassu-ca/
-
-// replace github.com/lamassuiot/lamassu-est => /home/ikerlan/lamassu/lamassu-est/
-
 require (
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/getkin/kin-openapi v0.88.0
