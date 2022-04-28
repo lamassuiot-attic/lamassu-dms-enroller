@@ -64,7 +64,6 @@ func main() {
 		time.Sleep(5 * time.Second)
 		os.Exit(1)
 	}
-
 	level.Info(logger).Log("msg", "Connection established with DMS Enroller database")
 
 	jcfg, err := jaegercfg.FromEnv()
